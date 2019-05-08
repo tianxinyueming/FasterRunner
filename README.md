@@ -2,6 +2,10 @@
 
 [![LICENSE](https://img.shields.io/github/license/HttpRunner/FasterRunner.svg)](https://github.com/HttpRunner/FasterRunner/blob/master/LICENSE) [![travis-ci](https://travis-ci.org/HttpRunner/FasterRunner.svg?branch=master)](https://travis-ci.org/HttpRunner/FasterRunner) ![pyversions](https://img.shields.io/pypi/pyversions/Django.svg)
 
+###
+- 增加新功能：文件上传与下载，上传的文件可通过自动生成根目录地址引用
+- 增加了自己的配置文件，在setting.py中引用，便于管理开发与本地调试，模板见文件：config.conf
+
 > FasterRunner that depends FasterWeb
 
 ```
@@ -29,5 +33,26 @@ python3 manage.py migrate fastuser
 python3 manage.py migrate djcelery
 ```
 
+## 本地开发环境部署
+##### 命令均在FastRunner根目录下执行
+``` bash
+1. pip install -r requirements.txt 安装依赖库
+2. 建立自己所需的myconfig.conf文件，参数见FasterRunner/setting.py文件
+3. 若在本地用mysql，则需要安装mysql server，并创建NAME指定的database
+4. python manage.py makemigrations 生成数据库迁移文件
+5. python manage.py migrate 应用生成的库文件
+6. python manage.py runserver 开发环境启动服务
+``` 
 
+##### windows安装uwsgi
+1. https://pypi.org/project/uWSGI/#files 下载uwsgi文件
+2. 在对应python版本的Lib\site-packages下解压
+3. 找到uwsgiconfig.py配置文件然后打开
+4. 导入模块 import platform，将全部os.uname替换为 platform.uname
+
+##### 其他注意点
+- Windows环境安装mysqlclient可能需要先安装Microsoft Visual c++ 14.0
+- Settings.py DEBUG=True默认生成sqlite数据库，DEBUG=False使用mysql数据库配置
+- 如果提示：No module named 'djcelery' ，再执行一遍 pip install django-celery==3.2.2
+- 如果提示： ValueError: Unable to configure handler 'default': [Errno 2] No such file or directory: 'mypath\\FasterRunner\\logs\\debug.log' , 手动创建FasterRunner\\logs\\debug.log
 

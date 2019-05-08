@@ -13,7 +13,7 @@ class ProjectSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = models.Project
-        fields = ['id', 'name', 'desc', 'responsible', 'update_time']
+        fields = ['id', 'name', 'desc', 'responsible', 'update_time', 'filePath']
 
 
 class DebugTalkSerializer(serializers.ModelSerializer):
@@ -167,3 +167,13 @@ class PeriodicTaskSerializer(serializers.ModelSerializer):
 
     def get_args(self, obj):
         return json.loads(obj.args)
+
+
+class FileSerializer(serializers.ModelSerializer):
+    """
+    文件信息序列化
+    """
+
+    class Meta:
+        model = models.ModelWithFileField
+        fields = ['id', 'create_time', 'update_time', 'name', 'project_id']

@@ -30,7 +30,7 @@ urlpatterns = [
     # 定时任务相关接口
     path('schedule/', schedule.ScheduleView.as_view({
         "get": "list",
-        "post": "add",
+        "post": "add"
     })),
 
     path('schedule/<int:pk>/', schedule.ScheduleView.as_view({
@@ -50,7 +50,15 @@ urlpatterns = [
     path('tree/<int:pk>/', project.TreeView.as_view()),
 
     # 文件上传 修改 删除接口地址
-    # path('file/', project.FileView.as_view()),
+    path('testdata/', project.FileView.as_view({
+        "post": "upload",
+        "get": "list",
+        "delete": "delete"
+    })),
+    path('testdata/<int:pk>/', project.FileView.as_view({
+        "delete": "delete",
+        "post": "download"
+    })),
 
     # api接口模板地址
     path('api/', api.APITemplateView.as_view({

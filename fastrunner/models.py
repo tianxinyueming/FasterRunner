@@ -16,7 +16,7 @@ class Project(BaseTable):
     name = models.CharField("项目名称", unique=True, null=False, max_length=100)
     desc = models.CharField("简要介绍", max_length=100, null=False)
     responsible = models.CharField("创建人", max_length=20, null=False)
-
+    filePath = models.CharField("项目文件根目录", max_length=50, unique=True, default='')
 
 class Debugtalk(models.Model):
     """
@@ -27,7 +27,7 @@ class Debugtalk(models.Model):
         verbose_name = "驱动库"
         db_table = "Debugtalk"
 
-    code = models.TextField("python代码", default="# write you code", null=False)
+    code = models.TextField("python代码", default="# _*_ coding:utf-8 _*_", null=False)
     project = models.OneToOneField(to=Project, on_delete=models.CASCADE)
 
 
@@ -163,13 +163,15 @@ class Relation(models.Model):
     tree = models.TextField("结构主题", null=False, default=[])
     type = models.IntegerField("树类型", default=1)
 
-[
-    {
-        "name": "testcase",
-        "body": "body",
-        "url": "https://www.baidu.com",
-        "method": "post",
-        "project": "1",
-        "relation": 1
-    }
-]
+
+class ModelWithFileField(BaseTable):
+    """
+    文件信息表
+    """
+    class Meta:
+        verbose_name = "文件信息表"
+        db_table = "FileInfo"
+
+    project = models.ForeignKey(Project, on_delete=models.CASCADE)
+    name = models.CharField(max_length=50)
+    filePath = models.FileField(unique=True)

@@ -1,5 +1,6 @@
 from django.core.exceptions import ObjectDoesNotExist
 from django.utils.decorators import method_decorator
+from django.http import FileResponse
 from rest_framework.views import APIView
 from rest_framework.viewsets import GenericViewSet
 from fastrunner import models, serializers
@@ -10,6 +11,8 @@ from fastrunner.utils import prepare
 from fastrunner.utils.decorator import request_log
 from fastrunner.utils.runner import DebugCode
 from fastrunner.utils.tree import get_tree_max_id
+from FasterRunner.settings import MEDIA_ROOT
+import os
 
 
 class ProjectView(GenericViewSet):
@@ -48,6 +51,8 @@ class ProjectView(GenericViewSet):
         if serializer.is_valid():
             serializer.save()
             project = models.Project.objects.get(name=name)
+            project.filePath = MEDIA_ROOT + '/' + str(project.id) + '/'
+            project.save()
             prepare.project_init(project)
             return Response(response.PROJECT_ADD_SUCCESS)
 
@@ -221,24 +226,92 @@ class TreeView(APIView):
 
         return Response(response.TREE_UPDATE_SUCCESS)
 
-#
-# class FileView(APIView):
-#
-#     def post(self, request):
-#         """
-#         接收文件并保存
-#         """
-#         file = request.FILES['file']
-#
-#         if models.FileBinary.objects.filter(name=file.name).first():
-#             return Response(response.FILE_EXISTS)
-#
-#         body = {
-#             "name": file.name,
-#             "body": file.file.read(),
-#             "size": get_file_size(file.size)
-#         }
-#
-#         models.FileBinary.objects.create(**body)
-#
-#         return Response(response.FILE_UPLOAD_SUCCESS)
+
+class FileView(GenericViewSet):
+    """
+    文件上传 下载
+    """
+    queryset = models.ModelWithFileField.objects
+    serializer_class = serializers.FileSerializer
+    pagination_class = pagination.MyCursorPagination
+
+    @method_decorator(request_log(level='DEBUG'))
+    def list(self, request):
+        """
+        查询文件列表
+        """
+        project = request.query_params['project']
+        search = request.query_params["search"]
+
+        files = self.get_queryset().filter(project_id=project).order_by('-update_time')
+        if search != '':
+            files = files.filter(key__contains=search)
+        pagination_queryset = self.paginate_queryset(files)
+        serializer = self.get_serializer(pagination_queryset, many=True)
+
+        return self.get_paginated_response(serializer.data)
+
+    @method_decorator(request_log(level='INFO'))
+    def upload(self, request):
+        """
+        接收文件并更新保存
+        """
+        try:
+            # 打开特定的文件进行二进制的写操作
+            myFile = request.FILES['file']
+            project_id = request.POST["project_id"]
+            if not os.path.exists(MEDIA_ROOT + '/' + str(project_id)):
+                os.makedirs(MEDIA_ROOT + '/' + str(project_id))
+            filePath = MEDIA_ROOT + '/' + str(project_id) + '/' + myFile.name
+
+            if models.ModelWithFileField.objects.filter(filePath=filePath).first():
+                FileObject = models.ModelWithFileField.objects.get(filePath=filePath)
+            else:
+                FileObject = models.ModelWithFileField()
+                FileObject.name = myFile.name
+                FileObject.project_id = project_id
+                FileObject.filePath = filePath
+
+            with open(filePath, 'wb+') as f:
+                # 分块写入文件
+                for chunk in myFile.chunks():
+                    f.write(chunk)
+
+            FileObject.save()
+            return Response(response.FILE_UPLOAD_SUCCESS)
+        except ObjectDoesNotExist:
+            return Response(response.FILE_FAIL)
+
+    @method_decorator(request_log(level='INFO'))
+    def delete(self, request, **kwargs):
+        try:
+            if kwargs.get('pk'):  # 单个删除
+                models.ModelWithFileField.objects.get(id=kwargs['pk']).delete()
+            else:
+                for content in request.data:
+                    models.ModelWithFileField.objects.get(id=content['id']).delete()
+
+        except ObjectDoesNotExist:
+            return Response(response.FILE_NOT_EXISTS)
+
+        return Response(response.FILE_DEL_SUCCESS)
+
+    @method_decorator(request_log(level='DEBUG'))
+    def download(self, request, **kwargs):
+        """下载文件"""
+        try:
+            if kwargs.get('pk'):
+                fileObject = models.ModelWithFileField.objects.get(id=kwargs['pk'])
+                filename = fileObject.name
+                filepath = MEDIA_ROOT + '/' + str(fileObject.project_id) + '/' + filename
+                if not os.path.exists(filepath):
+                    return Response( response.FILE_NOT_EXISTS )
+                else:
+                    fileresponse = FileResponse(open(filepath, 'rb'))
+                    fileresponse["Content-Type"] = "application/octet-stream"
+                    fileresponse["Content-Disposition"] = "attachment;filename={}".format(filename)
+                    return fileresponse
+            else:
+                return Response(response.KEY_MISS)
+        except ObjectDoesNotExist:
+            return Response(response.FILE_DOWNLOAD_FAIL)

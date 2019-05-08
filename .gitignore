@@ -1,0 +1,15 @@
+# Created by .ignore support plugin (hsz.mobi)
+
+# myconfig
+myconfig.conf
+logs
+.idea
+fastrunner/migrations/
+fastuser/migrations
+--exclude-from = __init_.py
+
+#python
+*.py[cod]
+*.so
+*.egg
+*.egg-info

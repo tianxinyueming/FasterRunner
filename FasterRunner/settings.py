@@ -12,6 +12,23 @@ https://docs.djangoproject.com/en/2.1/ref/settings/
 
 import os
 import djcelery
+import configparser
+
+# *******configThis******** get form config.conf 快速切换环境
+env = 'dev'
+# env = 'prod'
+
+cf = configparser.ConfigParser()
+cf.read("./myconfig.conf")
+
+database_name = cf.get(env+'-config', 'NAME')
+database_user = cf.get(env+'-config', 'USER')
+database_password = cf.get(env+'-config', 'PASSWORD')
+database_host = cf.get(env+'-config', 'HOST')
+database_port = cf.getint(env+'-config', 'PORT')
+invalid_time = cf.getint(env+'-config', 'INVALID_TIME')
+log_level = cf.getboolean(env+'-config', 'DEBUG')
+media_root = cf.get(env+'-config', 'MEDIA_ROOT')
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -23,12 +40,16 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SECRET_KEY = 'e$od9f28jce8q47u3raik$(e%$@lff6r89ux+=f!e1a$e42+#7'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = False
+DEBUG = log_level
 
 ALLOWED_HOSTS = ['*']
 
 # Token Settings
-INVALID_TIME = 60 * 60 * 24
+INVALID_TIME = invalid_time
+
+# Define MEDIA_URL as the base public URL of that directory. Make sure that this directory is writable by the Web server's user account.
+# Define MEDIA_ROOT as the full path to a directory where you'd like Django to store uploaded files. (For performance, these files are not stored in the database.)
+MEDIA_ROOT = media_root
 
 # Application definition
 
@@ -79,15 +100,20 @@ WSGI_APPLICATION = 'FasterRunner.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/2.1/ref/settings/#databases
 
-
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.sqlite3',
+#         'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
+#     }
+# }
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'db_name',
-        'USER': 'username',
-        'PASSWORD': 'password',
-        'HOST': '127.0.0.1',
-        'PORT': '3306',
+        'NAME': database_name,
+        'USER': database_user,
+        'PASSWORD': database_password,
+        'HOST': database_host,
+        'PORT': database_port
     }
 }
 
