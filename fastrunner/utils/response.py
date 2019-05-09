@@ -298,6 +298,18 @@ REPORT_NOT_EXISTS = {
     "msg": "指定的报告不存在"
 }
 
+PYCODE_EXISTS = {
+    "code": "0300",
+    "success": False,
+    "msg": "文件名已存在"
+}
+
+PYCODE_ADD_SUCCESS = {
+    "code": "0301",
+    "success": True,
+    "msg": "文件添加成功"
+}
+
 KEY_MISS = {
     "code": "1000",
     "success": False,

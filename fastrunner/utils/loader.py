@@ -175,18 +175,37 @@ def parse_tests(testcases, debugtalk, project, name=None, config=None):
     return testset
 
 
+# def load_debugtalk(project):
+#     """import debugtalk.py in sys.path and reload
+#         project: int
+#     """
+#     # debugtalk.py
+#     code = models.Debugtalk.objects.get(project__id=project).code
+#
+#     file_path = os.path.join(tempfile.mkdtemp(prefix='FasterRunner'), "debugtalk.py")
+#     FileLoader.dump_python_file(file_path, code)
+#     debugtalk = FileLoader.load_python_module(os.path.dirname(file_path))
+#
+#     shutil.rmtree(os.path.dirname(file_path))
+#     return debugtalk
+
+
 def load_debugtalk(project):
     """import debugtalk.py in sys.path and reload
         project: int
     """
-    # debugtalk.py
-    code = models.Debugtalk.objects.get(project__id=project).code
 
-    file_path = os.path.join(tempfile.mkdtemp(prefix='FasterRunner'), "debugtalk.py")
-    FileLoader.dump_python_file(file_path, code)
-    debugtalk = FileLoader.load_python_module(os.path.dirname(file_path))
+    tempfile_path = tempfile.mkdtemp(prefix='FasterRunner')
 
-    shutil.rmtree(os.path.dirname(file_path))
+    files = models.Pycode.objects.filter(project__id=project)
+    for file in files:
+        file_path = os.path.join(tempfile_path, file.name)
+        FileLoader.dump_python_file(file_path, file.code)
+
+    debugtalk_path = os.path.join(tempfile_path, 'debugtalk.py')
+    debugtalk = FileLoader.load_python_module(os.path.dirname(debugtalk_path))
+
+    shutil.rmtree(os.path.dirname(debugtalk_path))
     return debugtalk
 
 

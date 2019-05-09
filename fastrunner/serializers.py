@@ -16,16 +16,6 @@ class ProjectSerializer(serializers.ModelSerializer):
         fields = ['id', 'name', 'desc', 'responsible', 'update_time', 'filePath']
 
 
-class DebugTalkSerializer(serializers.ModelSerializer):
-    """
-    驱动代码序列化
-    """
-
-    class Meta:
-        model = models.Debugtalk
-        fields = ['id', 'code']
-
-
 class RelationSerializer(serializers.ModelSerializer):
     """
     树形结构序列化
@@ -177,3 +167,13 @@ class FileSerializer(serializers.ModelSerializer):
     class Meta:
         model = models.ModelWithFileField
         fields = ['id', 'create_time', 'update_time', 'name', 'project_id']
+
+
+class PycodeSerializer(serializers.ModelSerializer):
+    """
+    驱动代码序列化
+    """
+
+    class Meta:
+        model = models.Pycode
+        fields = '__all__'

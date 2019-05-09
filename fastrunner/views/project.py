@@ -115,59 +115,6 @@ class ProjectView(GenericViewSet):
         return Response(project_info)
 
 
-class DebugTalkView(GenericViewSet):
-    """
-    DebugTalk update
-    """
-
-    serializer_class = serializers.DebugTalkSerializer
-
-    @method_decorator(request_log(level='INFO'))
-    def debugtalk(self, request, **kwargs):
-        """
-        得到debugtalk code
-        """
-        pk = kwargs.pop('pk')
-        try:
-            queryset = models.Debugtalk.objects.get(project__id=pk)
-        except ObjectDoesNotExist:
-            return Response(response.DEBUGTALK_NOT_EXISTS)
-
-        serializer = self.get_serializer(queryset, many=False)
-
-        return Response(serializer.data)
-
-    @method_decorator(request_log(level='INFO'))
-    def update(self, request):
-        """
-        编辑debugtalk.py 代码并保存
-        """
-        pk = request.data['id']
-        try:
-            models.Debugtalk.objects.filter(id=pk). \
-                update(code=request.data['code'])
-
-        except ObjectDoesNotExist:
-            return Response(response.SYSTEM_ERROR)
-
-        return Response(response.DEBUGTALK_UPDATE_SUCCESS)
-
-    @method_decorator(request_log(level='INFO'))
-    def run(self, request):
-        try:
-            code = request.data["code"]
-        except KeyError:
-            return Response(response.KEY_MISS)
-        debug = DebugCode(code)
-        debug.run()
-        resp = {
-            "msg": debug.resp,
-            "success": True,
-            "code": "0001"
-        }
-        return Response(resp)
-
-
 class TreeView(APIView):
     """
     树形结构操作
@@ -315,3 +262,109 @@ class FileView(GenericViewSet):
                 return Response(response.KEY_MISS)
         except ObjectDoesNotExist:
             return Response(response.FILE_DOWNLOAD_FAIL)
+
+
+class PycodeView(GenericViewSet):
+    """
+    驱动代码 查询 编辑 添加
+    """
+    queryset = models.Pycode.objects
+    serializer_class = serializers.PycodeSerializer
+    pagination_class = pagination.MyCursorPagination
+
+    @method_decorator(request_log(level='DEBUG'))
+    def list(self, request):
+        """
+        查询文件列表
+        """
+        project = request.query_params['project']
+        search = request.query_params["search"]
+
+        files = self.get_queryset().filter(project_id=project).order_by('-update_time')
+        if search != '':
+            files = files.filter(key__contains=search)
+        pagination_queryset = self.paginate_queryset(files)
+        serializer = self.get_serializer(pagination_queryset, many=True)
+
+        return self.get_paginated_response(serializer.data)
+
+    @method_decorator(request_log(level='INFO'))
+    def add(self, request):
+        """添加文件 {
+            name: str
+        }
+        """
+
+        name = request.data["name"]
+        if models.Pycode.objects.filter(name=name).first():
+            response.PYCODE_EXISTS["name"] = name
+            return Response(response.PROJECT_EXISTS)
+        # 反序列化
+        serializer = serializers.PycodeSerializer(data=request.data)
+
+        if serializer.is_valid():
+            serializer.save()
+            return Response(response.PYCODE_ADD_SUCCESS)
+
+        return Response(response.SYSTEM_ERROR)
+
+    @method_decorator(request_log(level='INFO'))
+    def pycodeDebug(self, request, **kwargs):
+        """
+        得到debugtalk code
+        """
+        pk = kwargs.pop('pk')
+        try:
+            queryset = models.Pycode.objects.get(id=pk)
+        except ObjectDoesNotExist:
+            return Response(response.DEBUGTALK_NOT_EXISTS)
+
+        serializer = self.get_serializer(queryset, many=False)
+
+        return Response(serializer.data)
+
+    @method_decorator(request_log(level='INFO'))
+    def update(self, request, **kwargs):
+        """
+        编辑debugtalk.py 代码并保存
+        """
+        pk = kwargs.pop('pk')
+        try:
+            models.Pycode.objects.filter(id=pk). \
+                update(code=request.data['code'])
+
+        except ObjectDoesNotExist:
+            return Response(response.SYSTEM_ERROR)
+
+        return Response(response.DEBUGTALK_UPDATE_SUCCESS)
+
+    @method_decorator(request_log(level='INFO'))
+    def run(self, request, **kwargs):
+        try:
+            code = request.data["code"]
+            project = request.data["project"]
+            filename = request.data["name"]
+        except KeyError:
+            return Response(response.KEY_MISS)
+        debug = DebugCode(code, project, filename)
+        debug.run()
+        resp = {
+            "msg": debug.resp,
+            "success": True,
+            "code": "0001"
+        }
+        return Response(resp)
+
+    @method_decorator(request_log(level='INFO'))
+    def delete(self, request, **kwargs):
+        try:
+            if kwargs.get('pk'):  # 单个删除
+                models.Pycode.objects.get(id=kwargs['pk']).delete()
+            else:
+                for content in request.data:
+                    models.Pycode.objects.get(id=content['id']).delete()
+
+        except ObjectDoesNotExist:
+            return Response(response.FILE_NOT_EXISTS)
+
+        return Response(response.FILE_DEL_SUCCESS)

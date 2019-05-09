@@ -37,13 +37,16 @@ urlpatterns = [
         "delete": "delete"
     })),
 
-
-
-    # debugtalk.py相关接口地址
-    path('debugtalk/<int:pk>/', project.DebugTalkView.as_view({"get": "debugtalk"})),
-    path('debugtalk/', project.DebugTalkView.as_view({
+    # pycode相关接口地址
+    path('pycode/<int:pk>/', project.PycodeView.as_view({
+        "get": "pycodeDebug",
         "patch": "update",
         "post": "run"
+    })),
+    path('pycode/', project.PycodeView.as_view({
+        "get": "list",
+        "post": "add",
+        "delete": "delete"
     })),
 
     # 二叉树接口地址

@@ -18,18 +18,6 @@ class Project(BaseTable):
     responsible = models.CharField("创建人", max_length=20, null=False)
     filePath = models.CharField("项目文件根目录", max_length=50, unique=True, default='')
 
-class Debugtalk(models.Model):
-    """
-    驱动文件表
-    """
-
-    class Meta:
-        verbose_name = "驱动库"
-        db_table = "Debugtalk"
-
-    code = models.TextField("python代码", default="# _*_ coding:utf-8 _*_", null=False)
-    project = models.OneToOneField(to=Project, on_delete=models.CASCADE)
-
 
 class Config(BaseTable):
     """
@@ -129,7 +117,6 @@ class Variables(BaseTable):
     project = models.ForeignKey(Project, on_delete=models.CASCADE)
 
 
-
 class Report(BaseTable):
     """
     报告存储
@@ -175,3 +162,18 @@ class ModelWithFileField(BaseTable):
     project = models.ForeignKey(Project, on_delete=models.CASCADE)
     name = models.CharField(max_length=50)
     filePath = models.FileField(unique=True)
+
+
+class Pycode(BaseTable):
+    """
+    驱动文件表
+    """
+
+    class Meta:
+        verbose_name = "驱动文件库"
+        db_table = "pycodeFile"
+
+    code = models.TextField("python代码", default="# _*_ coding:utf-8 _*_", null=False)
+    project = models.ForeignKey(Project, on_delete=models.CASCADE)
+    name = models.CharField(max_length=30, null=False, unique=True)
+    desc = models.CharField("简要介绍", max_length=100, null=True, blank=True)

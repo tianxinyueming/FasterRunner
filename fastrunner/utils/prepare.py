@@ -41,7 +41,7 @@ def project_init(project):
     """
 
     # 自动生成默认debugtalk.py
-    models.Debugtalk.objects.create(project=project)
+    models.Pycode.objects.create(project=project, name="debugtalk.py")
     # 自动生成API tree
     models.Relation.objects.create(project=project)
     # 自动生成Test Tree
