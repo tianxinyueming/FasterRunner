@@ -180,7 +180,6 @@ class FileView(GenericViewSet):
     """
     queryset = models.ModelWithFileField.objects
     serializer_class = serializers.FileSerializer
-    pagination_class = pagination.MyCursorPagination
 
     @method_decorator(request_log(level='DEBUG'))
     def list(self, request):
@@ -270,7 +269,6 @@ class PycodeView(GenericViewSet):
     """
     queryset = models.Pycode.objects
     serializer_class = serializers.PycodeSerializer
-    pagination_class = pagination.MyCursorPagination
 
     @method_decorator(request_log(level='DEBUG'))
     def list(self, request):
@@ -328,15 +326,17 @@ class PycodeView(GenericViewSet):
         """
         编辑debugtalk.py 代码并保存
         """
-        pk = kwargs.pop('pk')
-        try:
-            models.Pycode.objects.filter(id=pk). \
-                update(code=request.data['code'])
 
+        try:
+            pk = kwargs.pop('pk')
+            if 'code' in request.data.keys():
+                models.Pycode.objects.filter(id=pk).update(code=request.data['code'])
+            else:
+                models.Pycode.objects.filter(id=pk).update(name=request.data['name'],desc=request.data['desc'])
         except ObjectDoesNotExist:
             return Response(response.SYSTEM_ERROR)
 
-        return Response(response.DEBUGTALK_UPDATE_SUCCESS)
+        return Response(response.PYCODE_UPDATE_SUCCESS)
 
     @method_decorator(request_log(level='INFO'))
     def run(self, request, **kwargs):

@@ -34,12 +34,6 @@ DEBUGTALK_NOT_EXISTS = {
     "msg": "miss debugtalk"
 }
 
-DEBUGTALK_UPDATE_SUCCESS = {
-    "code": "0012",
-    "success": True,
-    "msg": "debugtalk更新成功"
-}
-
 TREE_ADD_SUCCESS = {
     "code": "0021",
     "success": True,
@@ -308,6 +302,12 @@ PYCODE_ADD_SUCCESS = {
     "code": "0301",
     "success": True,
     "msg": "文件添加成功"
+}
+
+PYCODE_UPDATE_SUCCESS = {
+    "code": "0302",
+    "success": True,
+    "msg": "文件更新成功"
 }
 
 KEY_MISS = {

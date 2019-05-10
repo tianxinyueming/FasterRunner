@@ -10,6 +10,7 @@ import tempfile
 import types
 import requests
 import yaml
+import traceback
 from bs4 import BeautifulSoup
 from httprunner import HttpRunner, logger
 from requests.cookies import RequestsCookieJar
@@ -194,19 +195,21 @@ def load_debugtalk(project):
     """import debugtalk.py in sys.path and reload
         project: int
     """
+    try:
+        tempfile_path = tempfile.mkdtemp(prefix='FasterRunner')
 
-    tempfile_path = tempfile.mkdtemp(prefix='FasterRunner')
+        files = models.Pycode.objects.filter(project__id=project)
+        for file in files:
+            file_path = os.path.join(tempfile_path, file.name)
+            FileLoader.dump_python_file(file_path, file.code)
 
-    files = models.Pycode.objects.filter(project__id=project)
-    for file in files:
-        file_path = os.path.join(tempfile_path, file.name)
-        FileLoader.dump_python_file(file_path, file.code)
+        debugtalk_path = os.path.join(tempfile_path, 'debugtalk.py')
+        debugtalk = FileLoader.load_python_module(os.path.dirname(debugtalk_path))
 
-    debugtalk_path = os.path.join(tempfile_path, 'debugtalk.py')
-    debugtalk = FileLoader.load_python_module(os.path.dirname(debugtalk_path))
-
-    shutil.rmtree(os.path.dirname(debugtalk_path))
-    return debugtalk
+        shutil.rmtree(os.path.dirname(debugtalk_path))
+        return debugtalk
+    except Exception:
+        print(traceback.print_exc())
 
 
 def debug_suite(suite, project, obj, config, save=True):

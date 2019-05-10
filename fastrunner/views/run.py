@@ -1,5 +1,6 @@
 import json
 import logging
+import traceback
 
 from django.core.exceptions import ObjectDoesNotExist
 from rest_framework.decorators import api_view, authentication_classes
@@ -42,10 +43,15 @@ def run_api(request):
             return Response(config_err)
 
     if host != "请选择":
-        host = models.HostIP.objects.get(name=host, project__id=api.project).value.splitlines()
-        api.testcase = parse_host(host, api.testcase)
-
-    summary = loader.debug_api(api.testcase, api.project, config=parse_host(host, config))
+        try:
+            host = models.HostIP.objects.get(name=host, project__id=api.project).value.splitlines()
+            api.testcase = parse_host(host, api.testcase)
+        except ObjectDoesNotExist:
+            logger.error("指定域名不存在:{name}".format(name=host))
+    try:
+        summary = loader.debug_api(api.testcase, api.project, config=parse_host(host, config))
+    except Exception:
+        print(traceback.print_exc())
 
     return Response(summary)
 
@@ -62,10 +68,15 @@ def run_api_pk(request, **kwargs):
 
     test_case = eval(api.body)
     if host != "请选择":
-        host = models.HostIP.objects.get(name=host, project=api.project).value.splitlines()
-        test_case = parse_host(host, test_case)
-
-    summary = loader.debug_api(test_case, api.project.id, config=parse_host(host, config))
+        try:
+            host = models.HostIP.objects.get(name=host, project=api.project).value.splitlines()
+            test_case = parse_host(host, test_case)
+        except ObjectDoesNotExist:
+            logger.error("指定域名不存在:{name}".format(name=host))
+    try:
+        summary = loader.debug_api(test_case, api.project.id, config=parse_host(host, config))
+    except Exception:
+        print(traceback.print_exc())
 
     return Response(summary)
 
@@ -107,7 +118,10 @@ def run_api_tree(request):
         summary = loader.TEST_NOT_EXISTS
         summary["msg"] = "接口运行中，请稍后查看报告"
     else:
-        summary = loader.debug_api(test_case, project, config=parse_host(host, config))
+        try:
+            summary = loader.debug_api(test_case, project, config=parse_host(host, config))
+        except Exception:
+            print( traceback.print_exc() )
 
     return Response(summary)
 
@@ -129,21 +143,23 @@ def run_testsuite(request):
 
     test_case = []
     config = None
+    try:
+        if host != "请选择":
+            host = models.HostIP.objects.get(name=host, project=project).value.splitlines()
 
-    if host != "请选择":
-        host = models.HostIP.objects.get(name=host, project=project).value.splitlines()
+        for test in body:
+            test = loader.load_test(test, project=project)
+            if "base_url" in test["request"].keys():
+                config = test
+                continue
 
-    for test in body:
-        test = loader.load_test(test, project=project)
-        if "base_url" in test["request"].keys():
-            config = test
-            continue
+            test_case.append(parse_host(host, test))
 
-        test_case.append(parse_host(host, test))
+        summary = loader.debug_api(test_case, project, name=name, config=parse_host(host, config))
 
-    summary = loader.debug_api(test_case, project, name=name, config=parse_host(host, config))
-
-    return Response(summary)
+        return Response(summary)
+    except Exception:
+        print(traceback.print_exc())
 
 
 @api_view(["GET"])
@@ -156,34 +172,36 @@ def run_testsuite_pk(request, **kwargs):
             host: str
         }
     """
-    pk = kwargs["pk"]
+    try:
+        pk = kwargs["pk"]
 
-    test_list = models.CaseStep.objects. \
-        filter(case__id=pk).order_by("step").values("body")
+        test_list = models.CaseStep.objects. \
+            filter(case__id=pk).order_by("step").values("body")
 
-    project = request.query_params["project"]
-    name = request.query_params["name"]
-    host = request.query_params["host"]
+        project = request.query_params["project"]
+        name = request.query_params["name"]
+        host = request.query_params["host"]
 
-    test_case = []
-    config = None
+        test_case = []
+        config = None
 
-    if host != "请选择":
-        host = models.HostIP.objects.get(name=host, project=project).value.splitlines()
+        if host != "请选择":
+            host = models.HostIP.objects.get(name=host, project=project).value.splitlines()
 
-    for content in test_list:
-        body = eval(content["body"])
+        for content in test_list:
+            body = eval(content["body"])
 
-        if "base_url" in body["request"].keys():
-            config = eval(models.Config.objects.get(name=body["name"], project__id=project).body)
-            continue
+            if "base_url" in body["request"].keys():
+                config = eval(models.Config.objects.get(name=body["name"], project__id=project).body)
+                continue
 
-        test_case.append(parse_host(host, body))
+            test_case.append(parse_host(host, body))
 
-    summary = loader.debug_api(test_case, project, name=name, config=parse_host(host, config))
+        summary = loader.debug_api(test_case, project, name=name, config=parse_host(host, config))
 
-    return Response(summary)
-
+        return Response(summary)
+    except Exception:
+        print(traceback.print_exc())
 
 @api_view(['POST'])
 @request_log(level='INFO')
@@ -198,46 +216,49 @@ def run_suite_tree(request):
     }
     """
     # order by id default
-    project = request.data['project']
-    relation = request.data["relation"]
-    back_async = request.data["async"]
-    report = request.data["name"]
-    host = request.data["host"]
+    try:
+        project = request.data['project']
+        relation = request.data["relation"]
+        back_async = request.data["async"]
+        report = request.data["name"]
+        host = request.data["host"]
 
-    if host != "请选择":
-        host = models.HostIP.objects.get(name=host, project=project).value.splitlines()
+        if host != "请选择":
+            host = models.HostIP.objects.get(name=host, project=project).value.splitlines()
 
-    test_sets = []
-    suite_list = []
-    config_list = []
-    for relation_id in relation:
-        suite = list(models.Case.objects.filter(project__id=project,
-                                                relation=relation_id).order_by('id').values('id', 'name'))
-        for content in suite:
-            test_list = models.CaseStep.objects. \
-                filter(case__id=content["id"]).order_by("step").values("body")
+        test_sets = []
+        suite_list = []
+        config_list = []
+        for relation_id in relation:
+            suite = list(models.Case.objects.filter(project__id=project,
+                                                    relation=relation_id).order_by('id').values('id', 'name'))
+            for content in suite:
+                test_list = models.CaseStep.objects. \
+                    filter(case__id=content["id"]).order_by("step").values("body")
 
-            testcase_list = []
-            config = None
-            for content in test_list:
-                body = eval(content["body"])
-                if "base_url" in body["request"].keys():
-                    config = eval(models.Config.objects.get(name=body["name"], project__id=project).body)
-                    continue
-                testcase_list.append(parse_host(host, body))
-            # [[{scripts}, {scripts}], [{scripts}, {scripts}]]
-            config_list.append(parse_host(host, config))
-            test_sets.append(testcase_list)
-            suite_list = suite_list + suite
+                testcase_list = []
+                config = None
+                for content in test_list:
+                    body = eval(content["body"])
+                    if "base_url" in body["request"].keys():
+                        config = eval(models.Config.objects.get(name=body["name"], project__id=project).body)
+                        continue
+                    testcase_list.append(parse_host(host, body))
+                # [[{scripts}, {scripts}], [{scripts}, {scripts}]]
+                config_list.append(parse_host(host, config))
+                test_sets.append(testcase_list)
+                suite_list = suite_list + suite
 
-    if back_async:
-        tasks.async_debug_suite.delay(test_sets, project, suite_list, report, config_list)
-        summary = loader.TEST_NOT_EXISTS
-        summary["msg"] = "用例运行中，请稍后查看报告"
-    else:
-        summary = loader.debug_suite(test_sets, project, suite_list, config_list)
+        if back_async:
+            tasks.async_debug_suite.delay(test_sets, project, suite_list, report, config_list)
+            summary = loader.TEST_NOT_EXISTS
+            summary["msg"] = "用例运行中，请稍后查看报告"
+        else:
+            summary = loader.debug_suite(test_sets, project, suite_list, config_list)
 
-    return Response(summary)
+        return Response(summary)
+    except Exception:
+        print(traceback.print_exc())
 
 
 @api_view(["POST"])
@@ -251,21 +272,23 @@ def run_test(request):
         config: null or dict
     }
     """
+    try:
+        body = request.data["body"]
+        config = request.data.get("config", None)
+        project = request.data["project"]
+        host = request.data["host"]
 
-    body = request.data["body"]
-    config = request.data.get("config", None)
-    project = request.data["project"]
-    host = request.data["host"]
+        if host != "请选择":
+            host = models.HostIP.objects.get(name=host, project=project).value.splitlines()
 
-    if host != "请选择":
-        host = models.HostIP.objects.get(name=host, project=project).value.splitlines()
+        if config:
+            config = eval(models.Config.objects.get(project=project, name=config["name"]).body)
 
-    if config:
-        config = eval(models.Config.objects.get(project=project, name=config["name"]).body)
+        summary = loader.debug_api(parse_host(host, loader.load_test(body)), project, config=parse_host(host, config))
 
-    summary = loader.debug_api(parse_host(host, loader.load_test(body)), project, config=parse_host(host, config))
-
-    return Response(summary)
+        return Response(summary)
+    except Exception:
+        print(traceback.print_exc())
 
 
 @api_view(["POST"])
