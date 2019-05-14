@@ -172,8 +172,9 @@ class Pycode(BaseTable):
     class Meta:
         verbose_name = "驱动文件库"
         db_table = "pycodeFile"
+        unique_together = [['project', 'name']]
 
     code = models.TextField("python代码", default="# _*_ coding:utf-8 _*_", null=False)
     project = models.ForeignKey(Project, on_delete=models.CASCADE)
-    name = models.CharField(max_length=30, null=False, unique=True)
+    name = models.CharField(max_length=30, null=False)
     desc = models.CharField("简要介绍", max_length=100, null=True, blank=True)

@@ -85,7 +85,8 @@ urlpatterns = [
 
     path('test/<int:pk>/', suite.TestCaseView.as_view({
         "delete": "delete",
-        "post": "copy"
+        "post": "copy",
+        "patch": "patch"
     })),
 
     path('teststep/<int:pk>/', suite.CaseStepView.as_view()),

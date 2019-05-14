@@ -6,7 +6,7 @@ logs
 .idea
 fastrunner/migrations/
 fastuser/migrations
---exclude-from = __init_.py
+--exclude-from = __init__.py
 
 #python
 *.py[cod]

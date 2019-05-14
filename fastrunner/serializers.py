@@ -176,4 +176,4 @@ class PycodeSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = models.Pycode
-        fields = ['id', 'update_time', 'code', 'project_id', 'desc', 'name']
+        fields = ['id', 'update_time', 'code', 'project', 'desc', 'name']

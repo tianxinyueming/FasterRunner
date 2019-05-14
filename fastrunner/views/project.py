@@ -53,7 +53,10 @@ class ProjectView(GenericViewSet):
             project = models.Project.objects.get(name=name)
             project.filePath = MEDIA_ROOT + '/' + str(project.id) + '/'
             project.save()
-            prepare.project_init(project)
+            init_result = prepare.project_init(project)
+            if not init_result:
+                models.Project.objects.get(name=name).delete()
+                return Response(response.SYSTEM_ERROR)
             return Response(response.PROJECT_ADD_SUCCESS)
 
         return Response(response.SYSTEM_ERROR)
@@ -296,7 +299,7 @@ class PycodeView(GenericViewSet):
         name = request.data["name"]
         if models.Pycode.objects.filter(name=name).first():
             response.PYCODE_EXISTS["name"] = name
-            return Response(response.PROJECT_EXISTS)
+            return Response(response.PYCODE_EXISTS)
         # 反序列化
         serializer = serializers.PycodeSerializer(data=request.data)
 
@@ -348,21 +351,29 @@ class PycodeView(GenericViewSet):
             return Response(response.KEY_MISS)
         debug = DebugCode(code, project, filename)
         debug.run()
-        resp = {
-            "msg": debug.resp,
-            "success": True,
-            "code": "0001"
-        }
+        resp = response.PYCODE_RUN_SUCCESS
+        resp["msg"] = debug.resp
         return Response(resp)
 
     @method_decorator(request_log(level='INFO'))
     def delete(self, request, **kwargs):
         try:
             if kwargs.get('pk'):  # 单个删除
-                models.Pycode.objects.get(id=kwargs['pk']).delete()
+                file = models.Pycode.objects.get(id=kwargs['pk'])
+                if file.name != 'debugtalk.py':
+                    file.delete()
+                else:
+                    return Response(response.DEBUGTALK_CANNOT_DELETE)
             else:
+                isdebugtalk = False
                 for content in request.data:
-                    models.Pycode.objects.get(id=content['id']).delete()
+                    file = models.Pycode.objects.get(id=content['id'])
+                    if file.name != 'debugtalk.py':
+                        file.delete()
+                    else:
+                        isdebugtalk = True
+                if isdebugtalk:
+                    return Response(response.DEBUGTALK_CANNOT_DELETE)
 
         except ObjectDoesNotExist:
             return Response(response.FILE_NOT_EXISTS)

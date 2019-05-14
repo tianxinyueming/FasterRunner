@@ -88,10 +88,7 @@ class TestCaseView(GenericViewSet):
         body = request.data.pop('body')
         relation = request.data.pop("relation")
 
-        if models.Case.objects.exclude(id=pk). \
-                filter(name=request.data['name'],
-                       project__id=project,
-                       relation=relation).first():
+        if models.Case.objects.exclude(id=pk).filter(name=request.data['name'], project__id=project, relation=relation).first():
             return Response(response.CASE_EXISTS)
 
         case = models.Case.objects.get(id=pk)

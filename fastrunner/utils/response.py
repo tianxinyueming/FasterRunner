@@ -34,6 +34,12 @@ DEBUGTALK_NOT_EXISTS = {
     "msg": "miss debugtalk"
 }
 
+DEBUGTALK_CANNOT_DELETE = {
+    "code": "0012",
+    "success": False,
+    "msg": "debugtalk.py 不能被删除"
+}
+
 TREE_ADD_SUCCESS = {
     "code": "0021",
     "success": True,
@@ -308,6 +314,12 @@ PYCODE_UPDATE_SUCCESS = {
     "code": "0302",
     "success": True,
     "msg": "文件更新成功"
+}
+
+PYCODE_RUN_SUCCESS = {
+    "code": "0303",
+    "success": True,
+    "msg": ""
 }
 
 KEY_MISS = {
