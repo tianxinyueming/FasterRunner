@@ -52,6 +52,7 @@ class ConfigView(GenericViewSet):
 
         config = Format(request.data, level='config')
         config.parse()
+        del config.testcase["skipIf"]
 
         try:
             config.project = models.Project.objects.get(id=config.project)
@@ -94,6 +95,7 @@ class ConfigView(GenericViewSet):
 
         format = Format(request.data, level="config")
         format.parse()
+        del format.testcase["skipIf"]
 
         if models.Config.objects.exclude(id=pk).filter(name=format.name).first():
             return Response(response.CONFIG_EXISTS)

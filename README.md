@@ -5,6 +5,10 @@
 ###
 - 增加新功能：文件上传与下载，上传的文件可通过自动生成根目录地址引用
 - 增加了自己的配置文件，在setting.py中引用，便于管理开发与本地调试，模板见文件：config.conf
+- 驱动代码页面支持多py文件在线编辑
+- 批量api模板上传（ 支持httprunner -V 1.X/2.X），根据自己本地情况更改db_tools/import_api_data.py中 “MY_API_FILEPATH PROJECT_ID” 后，在根目录下执行命令 python mdb_tools\import_api_data.py, 重启后台即可
+- 支持skipIf机制。testcase中多用例执行时，可编辑api中skipIf一栏
+- 支持testcase运行时failfast。 可在配置信息中控制failfast开关。
 
 > FasterRunner that depends FasterWeb
 

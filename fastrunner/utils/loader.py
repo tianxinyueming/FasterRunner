@@ -243,10 +243,10 @@ def debug_api(api, project, name=None, config=None, save=True):
 
     testcase_list = [parse_tests(api, load_debugtalk(project), project, name=name, config=config)]
 
+    failFast = True if config["failFast"] == 'true' else False
     kwargs = {
-        "failfast": False
+        "failfast": failFast
     }
-
     runner = HttpRunner(**kwargs)
     runner.run(testcase_list)
 

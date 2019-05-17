@@ -4,9 +4,8 @@
 myconfig.conf
 logs
 .idea
-fastrunner/migrations/
-fastuser/migrations
---exclude-from = __init__.py
+fastrunner/migrations/*initial.py
+fastuser/migrations/*initial.py
 
 #python
 *.py[cod]

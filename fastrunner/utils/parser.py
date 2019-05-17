@@ -1,9 +1,9 @@
 import json
 import logging
+import traceback
 from enum import Enum
 
 logger = logging.getLogger('FasterRunner')
-
 
 
 class FileType(Enum):
@@ -54,7 +54,7 @@ class Format(object):
             self.__variables = body['variables'].pop('variables')
             self.__setup_hooks = body['hooks'].pop('setup_hooks')
             self.__teardown_hooks = body['hooks'].pop('teardown_hooks')
-            self.__skipIf = body["skipIf"] if body["skipIf"] else False
+            self.__skipIf = body["skipIf"] if 'skipIf' in body.keys() else False
 
             self.__desc = {
                 "header": body['header'].pop('desc'),
@@ -77,16 +77,16 @@ class Format(object):
                 self.base_url = body.pop('base_url')
                 self.__parameters = body['parameters'].pop('parameters')
                 self.__desc["parameters"] = body['parameters'].pop('desc')
+                self.__failFast = body.pop('failFast')
 
             self.__level = level
             self.testcase = None
 
-            self.project = body.pop('project')
-            self.relation = body.pop('nodeId')
+            self.project = body.pop('project') if 'project' in body.keys() else ''
+            self.relation = body.pop('nodeId') if 'nodeId' in body.keys() else ''
 
         except KeyError:
-            # project or relation
-            pass
+            print(traceback.print_exc())
 
     def parse(self):
         """
@@ -116,7 +116,8 @@ class Format(object):
                 "request": {
                     "base_url": self.base_url,
                 },
-                "desc": self.__desc
+                "desc": self.__desc,
+                "failFast": self.__failFast
             }
 
             if self.__parameters:
@@ -191,6 +192,7 @@ class Parse(object):
 
         elif level is "config":
             self.__parameters = body.get("parameters")
+            self.__failFast = body.get("failFast", True)
 
         self.__level = level
         self.testcase = None
@@ -208,14 +210,16 @@ class Parse(object):
             "list": 5,
             "dict": 6,
         }
+        if content:
+            key = str(type(content).__name__)
 
-        key = str(type(content).__name__)
-
-        if key in ["list", "dict"]:
-            content = json.dumps(content, ensure_ascii=False)
+            if key in ["list", "dict"]:
+                content = json.dumps(content, ensure_ascii=False)
+            else:
+                content = str(content)
+            return var_type[key], content
         else:
-            content = str(content)
-        return var_type[key], content
+            return 1, ''
 
     def parse_http(self):
         """
@@ -290,6 +294,7 @@ class Parse(object):
             test["base_url"] = self.__request["base_url"]
             test["parameters"] = init
             test["skipIf"] = self.__skipIf
+            test["failFast"] = self.__failFast
             if self.__parameters:
                 test["parameters"] = []
                 for content in self.__parameters:
