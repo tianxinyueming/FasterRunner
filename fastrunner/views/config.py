@@ -1,7 +1,12 @@
+import json
 from django.core.exceptions import ObjectDoesNotExist
 from django.utils.decorators import method_decorator
 from rest_framework.viewsets import GenericViewSet
+from rest_framework import viewsets
+from rest_framework import mixins
+from rest_framework import status
 from fastrunner import models, serializers
+from FasterRunner import pagination
 from rest_framework.response import Response
 from fastrunner.utils import response
 from fastrunner.utils.decorator import request_log
@@ -258,86 +263,44 @@ class VariablesView(GenericViewSet):
         return Response(response.API_DEL_SUCCESS)
 
 
-class HostIPView(GenericViewSet):
-    serializer_class = serializers.HostIPSerializer
-    queryset = models.HostIP.objects
+class HostIPView(viewsets.ModelViewSet):
+    pagination_class = pagination.MyPageNumberPagination
 
-    @method_decorator(request_log(level='DEBUG'))
-    def list(self, request):
-        project = request.query_params['project']
-        queryset = self.get_queryset().filter(project__id=project).order_by('-update_time')
-        pagination_queryset = self.paginate_queryset(queryset)
-        serializer = self.get_serializer(pagination_queryset, many=True)
+    def get_queryset(self):
+        if self.action in ('list', 'destroy'):
+            project = self.request.query_params['project']
+        else:
+            project = self.request.data["project"]
+        return models.HostIP.objects.filter(project__id=project).order_by('-update_time')
 
-        return self.get_paginated_response(serializer.data)
+    def create(self, request, *args, **kwargs):
+        request.data["hostInfo"] = json.dumps(request.data["hostInfo"])
 
-    @method_decorator(request_log(level='INFO'))
-    def add(self, request):
-        """
-            add new variables
-            {
-                name: str
-                value: str
-                project: int
-            }
-        """
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        headers = self.get_success_headers(serializer.data)
+        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
 
-        try:
-            project = models.Project.objects.get(id=request.data["project"])
-        except ObjectDoesNotExist:
-            return Response(response.PROJECT_NOT_EXISTS)
+    def get_serializer_class(self):
+        if self.action == 'create':
+            return serializers.HostIPSerializerPost
+        else:
+            return serializers.HostIPSerializerList
 
-        if models.HostIP.objects.filter(name=request.data["name"], project=project).first():
-            return Response(response.HOSTIP_EXISTS)
+    def update(self, request, *args, **kwargs):
+        partial = kwargs.pop('partial', False)
+        instance = self.get_object()
 
-        request.data["project"] = project
+        instance.hostInfo = json.dumps(request.data["hostInfo"])
 
-        models.HostIP.objects.create(**request.data)
-        return Response(response.HOSTIP_ADD_SUCCESS)
+        serializer = self.get_serializer(instance, data=request.data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
 
-    @method_decorator(request_log(level='INFO'))
-    def update(self, request, **kwargs):
-        """pk: int{
-          name: str
-          value:str
-        }
-        """
-        pk = kwargs['pk']
+        if getattr(instance, '_prefetched_objects_cache', None):
+            # If 'prefetch_related' has been applied to a queryset, we need to
+            # forcibly invalidate the prefetch cache on the instance.
+            instance._prefetched_objects_cache = {}
 
-        try:
-            host = models.HostIP.objects.get(id=pk)
-
-        except ObjectDoesNotExist:
-            return Response(response.HOSTIP_NOT_EXISTS)
-
-        if models.HostIP.objects.exclude(id=pk).filter(name=request.data['name']).first():
-            return Response(response.HOSTIP_EXISTS)
-
-        host.name = request.data["name"]
-        host.value = request.data["value"]
-        host.save()
-
-        return Response(response.HOSTIP_UPDATE_SUCCESS)
-
-    @method_decorator(request_log(level='INFO'))
-    def delete(self, request, **kwargs):
-        """删除host
-        """
-        try:
-            models.HostIP.objects.get(id=kwargs['pk']).delete()
-        except ObjectDoesNotExist:
-            return Response(response.HOSTIP_NOT_EXISTS)
-
-        return Response(response.HOST_DEL_SUCCESS)
-
-    @method_decorator(request_log(level='DEBUG'))
-    def all(self, request, **kwargs):
-        """
-        get all config
-        """
-        pk = kwargs["pk"]
-
-        queryset = self.get_queryset().filter(project__id=pk). \
-            order_by('-update_time').values("id", "name")
-
-        return Response(queryset)
+        return Response(serializer.data)

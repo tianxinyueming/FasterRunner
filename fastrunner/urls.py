@@ -15,9 +15,22 @@ Including another URLconf
 """
 
 from django.urls import path
+from django.conf.urls import url, include
+from rest_framework.routers import DefaultRouter
+
 from fastrunner.views import project, api, config, schedule, run, suite, report
 
+router = DefaultRouter()
+
+# 配置host_ip
+router.register(r'host_ip', config.HostIPView, base_name='host_ip')
+
 urlpatterns = [
+    # 开发登录
+    url(r'', include('rest_framework.urls', namespace='rest_framework')),
+
+    url(r'^', include(router.urls)),
+
     # 项目相关接口地址
     path('project/', project.ProjectView.as_view({
         "get": "list",
@@ -136,16 +149,5 @@ urlpatterns = [
     path('reports/<int:pk>/', report.ReportView.as_view({
         "delete": "delete",
         "get": "look"
-    })),
-
-    path('host_ip/', config.HostIPView.as_view({
-        "post": "add",
-        "get": "list"
-    })),
-
-    path('host_ip/<int:pk>/', config.HostIPView.as_view({
-        "delete": "delete",
-        "patch": "update",
-        "get": "all"
-    })),
+    }))
 ]

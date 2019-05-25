@@ -226,7 +226,7 @@ def debug_suite(suite, project, obj, config, save=True):
     return summary
 
 
-def debug_api(api, project, name=None, config=None, save=True):
+def debug_api(api, project, name=None, config=None, save=True, test_data=None):
     """debug api
         api :dict or list
         project: int
@@ -243,10 +243,16 @@ def debug_api(api, project, name=None, config=None, save=True):
 
     testcase_list = [parse_tests(api, load_debugtalk(project), project, name=name, config=config)]
 
-    failFast = True if config["failFast"] == 'true' else False
+    failFast = False
+    if 'failFast' in config.keys():
+        failFast = True if (config["failFast"] == 'true' or config["failFast"] is True) else False
+
     kwargs = {
         "failfast": failFast
     }
+    if test_data is not None:
+        os.environ["excelName"] = test_data[0]
+        os.environ["excelsheet"] = test_data[1]
     runner = HttpRunner(**kwargs)
     runner.run(testcase_list)
 

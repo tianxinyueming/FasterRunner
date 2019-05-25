@@ -6,6 +6,7 @@ logs
 .idea
 fastrunner/migrations/*initial.py
 fastuser/migrations/*initial.py
+fastrunner/migrations/*_auto_*.py
 
 #python
 *.py[cod]

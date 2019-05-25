@@ -42,16 +42,25 @@ def run_api(request):
             logger.error("指定配置文件不存在:{name}".format(name=name))
             return Response(config_err)
 
+    temp_config = []
     if host != "请选择":
-        try:
-            host = models.HostIP.objects.get(name=host, project__id=api.project).value.splitlines()
-            api.testcase = parse_host(host, api.testcase)
-        except ObjectDoesNotExist:
-            logger.error("指定域名不存在:{name}".format(name=host))
-    try:
-        summary = loader.debug_api(api.testcase, api.project, config=parse_host(host, config))
-    except Exception:
-        print(traceback.print_exc())
+        host = models.HostIP.objects.get(name=host, project=api.project)
+        host_info = eval(host.hostInfo)
+        for info in host_info:
+            temp_config.append({info["key"]: info["value"]})
+    if config and temp_config:
+        for _temp in temp_config:
+            config["variables"].append(_temp)
+    if not config and temp_config:
+        config = {"variables": temp_config}
+
+    # if host != "请选择":
+    #     try:
+    #         host = models.HostIP.objects.get(name=host, project__id=api.project).value.splitlines()
+    #         api.testcase = parse_host(host, api.testcase)
+    #     except ObjectDoesNotExist:
+    #         logger.error("指定域名不存在:{name}".format(name=host))
+    summary = loader.debug_api(api.testcase, api.project, config=parse_host(host, config))
 
     return Response(summary)
 
@@ -67,12 +76,23 @@ def run_api_pk(request, **kwargs):
     config = None if name == '请选择' else eval(models.Config.objects.get(name=name, project=api.project).body)
 
     test_case = eval(api.body)
+    temp_config = []
     if host != "请选择":
-        try:
-            host = models.HostIP.objects.get(name=host, project=api.project).value.splitlines()
-            test_case = parse_host(host, test_case)
-        except ObjectDoesNotExist:
-            logger.error("指定域名不存在:{name}".format(name=host))
+        host = models.HostIP.objects.get(name=host, project=api.project)
+        host_info = eval(host.hostInfo)
+        for info in host_info:
+            temp_config.append({info["key"]: info["value"]})
+    if config and temp_config:
+        for _temp in temp_config:
+            config["variables"].append(_temp)
+    if not config and temp_config:
+        config = {"variables": temp_config}
+    # if host != "请选择":
+    #     try:
+    #         host = models.HostIP.objects.get(name=host, project=api.project).value.splitlines()
+    #         test_case = parse_host(host, test_case)
+    #     except ObjectDoesNotExist:
+    #         logger.error("指定域名不存在:{name}".format(name=host))
     try:
         summary = loader.debug_api(test_case, api.project.id, config=parse_host(host, config))
     except Exception:
@@ -103,9 +123,17 @@ def run_api_tree(request):
 
     config = None if config == '请选择' else eval(models.Config.objects.get(name=config, project__id=project).body)
     test_case = []
-
+    temp_config = []
     if host != "请选择":
-        host = models.HostIP.objects.get(name=host, project=project).value.splitlines()
+        host = models.HostIP.objects.get(name=host, project=project)
+        host_info = eval(host.hostInfo)
+        for info in host_info:
+            temp_config.append({info["key"]: info["value"]})
+    if config and temp_config:
+        for _temp in temp_config:
+            config["variables"].append(_temp)
+    if not config and temp_config:
+        config = {"variables": temp_config}
 
     for relation_id in relation:
         api = models.API.objects.filter(project__id=project, relation=relation_id).order_by('id').values('body')
@@ -141,11 +169,18 @@ def run_testsuite(request):
     name = request.data["name"]
     host = request.data["host"]
 
+    test_data = None
+    if request.data["testDataExcel"] != '请选择' and request.data["testDataSheet"]:
+        test_data = (request.data["testDataExcel"], request.data["testDataSheet"])
     test_case = []
     config = None
+    temp_config = []
     try:
         if host != "请选择":
-            host = models.HostIP.objects.get(name=host, project=project).value.splitlines()
+            host = models.HostIP.objects.get(name=host, project=project)
+            host_info = eval(host.hostInfo)
+            for info in host_info:
+                temp_config.append({info["key"]: info["value"]})
 
         for test in body:
             test = loader.load_test(test, project=project)
@@ -155,7 +190,13 @@ def run_testsuite(request):
 
             test_case.append(parse_host(host, test))
 
-        summary = loader.debug_api(test_case, project, name=name, config=parse_host(host, config))
+        if config and temp_config:
+            for _temp in temp_config:
+                config["variables"].append(_temp)
+        if not config and temp_config:
+            config = {"variables": temp_config}
+
+        summary = loader.debug_api(test_case, project, name=name, config=parse_host(host, config), test_data=test_data)
 
         return Response(summary)
     except Exception:
@@ -175,18 +216,24 @@ def run_testsuite_pk(request, **kwargs):
     try:
         pk = kwargs["pk"]
 
-        test_list = models.CaseStep.objects. \
-            filter(case__id=pk).order_by("step").values("body")
+        test_list = models.CaseStep.objects.filter(case__id=pk).order_by("step").values("body")
 
         project = request.query_params["project"]
         name = request.query_params["name"]
         host = request.query_params["host"]
 
+        test_data = None
+        if request.query_params["testDataExcel"] != '请选择' and request.query_params["testDataSheet"]:
+            test_data = (request.query_params["testDataExcel"], request.query_params["testDataSheet"])
+
         test_case = []
         config = None
-
+        temp_config = []
         if host != "请选择":
-            host = models.HostIP.objects.get(name=host, project=project).value.splitlines()
+            host = models.HostIP.objects.get(name=host, project=project)
+            host_info = eval(host.hostInfo)
+            for info in host_info:
+                temp_config.append({info["key"]: info["value"]})
 
         for content in test_list:
             body = eval(content["body"])
@@ -197,7 +244,13 @@ def run_testsuite_pk(request, **kwargs):
 
             test_case.append(parse_host(host, body))
 
-        summary = loader.debug_api(test_case, project, name=name, config=parse_host(host, config))
+        if config and temp_config:
+            for _temp in temp_config:
+                config["variables"].append(_temp)
+        if not config and temp_config:
+            config = {"variables": temp_config}
+
+        summary = loader.debug_api(test_case, project, name=name, config=parse_host(host, config), test_data=test_data)
 
         return Response(summary)
     except Exception:
@@ -223,8 +276,12 @@ def run_suite_tree(request):
         report = request.data["name"]
         host = request.data["host"]
 
+        temp_config = []
         if host != "请选择":
-            host = models.HostIP.objects.get(name=host, project=project).value.splitlines()
+            host = models.HostIP.objects.get(name=host, project=project)
+            host_info = eval(host.hostInfo)
+            for info in host_info:
+                temp_config.append({info["key"]: info["value"]})
 
         test_sets = []
         suite_list = []
@@ -245,6 +302,11 @@ def run_suite_tree(request):
                         continue
                     testcase_list.append(parse_host(host, body))
                 # [[{scripts}, {scripts}], [{scripts}, {scripts}]]
+                if config and temp_config:
+                    for _temp in temp_config:
+                        config["variables"].append(_temp)
+                if not config and temp_config:
+                    config = {"variables": temp_config}
                 config_list.append(parse_host(host, config))
                 test_sets.append(testcase_list)
                 suite_list = suite_list + suite
@@ -277,14 +339,27 @@ def run_test(request):
         config = request.data.get("config", None)
         project = request.data["project"]
         host = request.data["host"]
+        test_data = None
+        if request.data["testDataExcel"] != '请选择' and request.data["testDataSheet"]:
+            test_data = (request.data["testDataExcel"], request.data["testDataSheet"])
 
+        temp_config = []
         if host != "请选择":
-            host = models.HostIP.objects.get(name=host, project=project).value.splitlines()
+            host = models.HostIP.objects.get(name=host, project=project)
+            host_info = eval(host.hostInfo)
+            for info in host_info:
+                temp_config.append({info["key"]: info["value"]})
 
         if config:
             config = eval(models.Config.objects.get(project=project, name=config["name"]).body)
 
-        summary = loader.debug_api(parse_host(host, loader.load_test(body)), project, config=parse_host(host, config))
+        if config and temp_config:
+            for _temp in temp_config:
+                config["variables"].append(_temp)
+        if not config and temp_config:
+            config = {"variables": temp_config}
+
+        summary = loader.debug_api(parse_host(host, loader.load_test(body)), project, config=parse_host(host, config), test_data=test_data)
 
         return Response(summary)
     except Exception:

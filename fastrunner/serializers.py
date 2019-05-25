@@ -1,5 +1,4 @@
 import json
-
 from rest_framework import serializers
 from fastrunner import models
 from fastrunner.utils.parser import Parse
@@ -131,14 +130,29 @@ class VariablesSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 
-class HostIPSerializer(serializers.ModelSerializer):
+class HostIPSerializerPost(serializers.ModelSerializer):
     """
-    变量信息序列化
+    环境配置信息序列化
     """
 
     class Meta:
         model = models.HostIP
+        fields = ('name', 'project', 'hostInfo')
+
+
+class HostIPSerializerList(serializers.ModelSerializer):
+    """
+    环境配置信息序列化
+    """
+    hostInfo = serializers.SerializerMethodField()
+
+    class Meta:
+        model = models.HostIP
         fields = '__all__'
+
+    def get_hostInfo(self, obj):
+        hostinfo = json.loads(obj.hostInfo)
+        return hostinfo
 
 
 class PeriodicTaskSerializer(serializers.ModelSerializer):

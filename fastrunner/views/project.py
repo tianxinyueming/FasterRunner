@@ -190,11 +190,10 @@ class FileView(GenericViewSet):
         查询文件列表
         """
         project = request.query_params['project']
-        search = request.query_params["search"]
 
         files = self.get_queryset().filter(project_id=project).order_by('-update_time')
-        if search != '':
-            files = files.filter(key__contains=search)
+        if 'search' in request.query_params.keys() and request.query_params["search"] != '':
+            files = files.filter(key__contains=request.query_params["search"])
         pagination_queryset = self.paginate_queryset(files)
         serializer = self.get_serializer(pagination_queryset, many=True)
 

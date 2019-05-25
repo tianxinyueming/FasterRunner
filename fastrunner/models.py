@@ -91,16 +91,16 @@ class CaseStep(BaseTable):
 
 class HostIP(BaseTable):
     """
-    全局变量
+    环境域名
     """
 
     class Meta:
         verbose_name = "HOST配置"
         db_table = "HostIP"
 
-    name = models.CharField(null=False, max_length=100)
-    value = models.TextField(null=False)
-    project = models.ForeignKey(Project, on_delete=models.CASCADE)
+    name = models.CharField(null=False, max_length=20, unique=True, help_text="环境名称")
+    hostInfo = models.TextField(null=False, help_text="环境详情")
+    project = models.ForeignKey(Project, on_delete=models.CASCADE, help_text="所属项目")
 
 
 class Variables(BaseTable):

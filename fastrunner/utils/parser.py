@@ -54,7 +54,15 @@ class Format(object):
             self.__variables = body['variables'].pop('variables')
             self.__setup_hooks = body['hooks'].pop('setup_hooks')
             self.__teardown_hooks = body['hooks'].pop('teardown_hooks')
-            self.__skipIf = body["skipIf"] if 'skipIf' in body.keys() else False
+            if 'skipIf' in body.keys():
+                if body["skipIf"].lower() == "true":
+                    self.__skipIf = True
+                elif body["skipIf"].lower() == "false":
+                    self.__skipIf = False
+                else:
+                    self.__skipIf = body["skipIf"]
+            else:
+                self.__skipIf = False
 
             self.__desc = {
                 "header": body['header'].pop('desc'),
@@ -183,7 +191,13 @@ class Parse(object):
         self.__setup_hooks = body.get('setup_hooks', [])
         self.__teardown_hooks = body.get('teardown_hooks', [])
         self.__desc = body.get('desc')
-        self.__skipIf = body.get('skipIf', False)
+        skipif = body.get('skipIf', False)
+        if skipif is True:
+            self.__skipIf = 'true'
+        elif skipif is False:
+            self.__skipIf = 'false'
+        else:
+            self.__skipIf = skipif
 
         if level is 'test':
             self.__times = body.get('times', 1)  # 如果导入没有times 默认为1
@@ -192,7 +206,7 @@ class Parse(object):
 
         elif level is "config":
             self.__parameters = body.get("parameters")
-            self.__failFast = body.get("failFast", True)
+            self.__failFast = body.get("failFast", 'true')
 
         self.__level = level
         self.testcase = None
@@ -247,7 +261,7 @@ class Parse(object):
                 "params": init_p,
                 "json_data": ''
             },
-            "skipIf": False,
+            "skipIf": "false",
             "variables": init_p,
             "hooks": [{
                 "setup": "",
