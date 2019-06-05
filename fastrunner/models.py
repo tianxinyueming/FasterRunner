@@ -1,7 +1,18 @@
 from django.db import models
 
-# Create your models here.
-from fastuser.models import BaseTable
+
+class BaseTable(models.Model):
+    """
+    公共字段列
+    """
+
+    class Meta:
+        abstract = True
+        verbose_name = "公共字段表"
+        db_table = 'BaseTable'
+
+    create_time = models.DateTimeField('创建时间', auto_now_add=True)
+    update_time = models.DateTimeField('更新时间', auto_now=True)
 
 
 class Project(BaseTable):
@@ -16,7 +27,6 @@ class Project(BaseTable):
     name = models.CharField("项目名称", unique=True, null=False, max_length=100)
     desc = models.CharField("简要介绍", max_length=100, null=False)
     responsible = models.CharField("创建人", max_length=20, null=False)
-    filePath = models.CharField("项目文件根目录", max_length=50, unique=True, default='')
 
 
 class Config(BaseTable):
@@ -158,10 +168,11 @@ class ModelWithFileField(BaseTable):
     class Meta:
         verbose_name = "文件信息表"
         db_table = "FileInfo"
+        unique_together = [['project', 'name']]
 
     project = models.ForeignKey(Project, on_delete=models.CASCADE)
     name = models.CharField(max_length=50)
-    filePath = models.FileField(unique=True)
+    file = models.FileField(upload_to='testdatas', unique=True, null=True, blank=True)
 
 
 class Pycode(BaseTable):

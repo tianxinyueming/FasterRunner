@@ -13,6 +13,7 @@ https://docs.djangoproject.com/en/2.1/ref/settings/
 import os
 import djcelery
 import configparser
+import datetime
 
 # *******configThis******** get form config.conf 快速切换环境
 env = 'dev'
@@ -28,7 +29,7 @@ database_host = cf.get(env+'-config', 'HOST')
 database_port = cf.getint(env+'-config', 'PORT')
 invalid_time = cf.getint(env+'-config', 'INVALID_TIME')
 log_level = cf.getboolean(env+'-config', 'DEBUG')
-media_root = cf.get(env+'-config', 'MEDIA_ROOT')
+# media_root = cf.get(env+'-config', 'MEDIA_ROOT')
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -44,13 +45,10 @@ DEBUG = log_level
 
 ALLOWED_HOSTS = ['*']
 
-# Token Settings
-INVALID_TIME = invalid_time
-
 # Define MEDIA_URL as the base public URL of that directory. Make sure that this directory is writable by the Web server's user account.
 # Define MEDIA_ROOT as the full path to a directory where you'd like Django to store uploaded files. (For performance, these files are not stored in the database.)
-MEDIA_ROOT = media_root
-
+MEDIA_ROOT = os.path.join(BASE_DIR, "media")
+MEDIA_URL = "/media/"
 # Application definition
 
 INSTALLED_APPS = [
@@ -61,10 +59,10 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'fastrunner.apps.FastrunnerConfig',
-    'fastuser',
     'rest_framework',
     'corsheaders',
-    'djcelery'
+    'djcelery',
+    'rest_framework.authtoken'
 ]
 
 MIDDLEWARE = [
@@ -157,7 +155,18 @@ STATIC_URL = '/static/'
 # rest_framework config
 
 REST_FRAMEWORK = {
-    'DEFAULT_AUTHENTICATION_CLASSES': ['FasterRunner.auth.Authenticator'],
+    'DEFAULT_PERMISSION_CLASSES': (
+        'rest_framework.permissions.IsAuthenticated',
+    ),
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework_jwt.authentication.JSONWebTokenAuthentication',
+        'rest_framework.authentication.SessionAuthentication',
+        'rest_framework.authentication.BasicAuthentication',
+    ),
+    # 'DEFAULT_AUTHENTICATION_CLASSES': (
+    #     'rest_framework.authentication.BasicAuthentication',
+    #     'rest_framework.authentication.SessionAuthentication',
+    # ),
     'UNAUTHENTICATED_USER': None,
     'UNAUTHENTICATED_TOKEN': None,
     # json form 渲染
@@ -167,6 +176,11 @@ REST_FRAMEWORK = {
                                'rest_framework.parsers.FileUploadParser',
                                ],
     'DEFAULT_PAGINATION_CLASS': 'FasterRunner.pagination.MyPageNumberPagination',
+}
+
+JWT_AUTH = {
+    'JWT_EXPIRATION_DELTA': datetime.timedelta(hours=int(invalid_time)),
+    'JWT_AUTH_HEADER_PREFIX': 'JWT',
 }
 
 CORS_ALLOW_CREDENTIALS = True

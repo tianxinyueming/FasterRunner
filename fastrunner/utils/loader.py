@@ -17,6 +17,7 @@ from requests.cookies import RequestsCookieJar
 
 from fastrunner import models
 from fastrunner.utils.parser import Format
+from FasterRunner.settings import BASE_DIR
 
 logger.setup_logger('INFO')
 
@@ -82,6 +83,13 @@ class FileLoader(object):
         """
         with io.open(binary_file, 'wb') as stream:
             stream.write(data)
+
+    @staticmethod
+    def copy_file(path, to_path):
+        """
+        copy file to_path
+        """
+        shutil.copyfile(path, to_path)
 
     @staticmethod
     def load_python_module(file_path):
@@ -181,18 +189,21 @@ def load_debugtalk(project):
         project: int
     """
     try:
-        tempfile_path = tempfile.mkdtemp(prefix='FasterRunner')
+        tempfile_path = tempfile.mkdtemp(prefix='tempHttpRunner', dir=os.path.join(BASE_DIR, 'tempWorkDir'))
 
-        files = models.Pycode.objects.filter(project__id=project)
-        for file in files:
+        py_files = models.Pycode.objects.filter(project__id=project)
+        for file in py_files:
             file_path = os.path.join(tempfile_path, file.name)
             FileLoader.dump_python_file(file_path, file.code)
-
+        testdata_files = models.ModelWithFileField.objects.filter(project__id=project)
+        for testdata in testdata_files:
+            testdata_path = os.path.join(tempfile_path, testdata.name)
+            myfile_path = os.path.join(BASE_DIR, 'media', str(testdata.file))
+            FileLoader.copy_file(myfile_path, testdata_path)
         debugtalk_path = os.path.join(tempfile_path, 'debugtalk.py')
         debugtalk = FileLoader.load_python_module(os.path.dirname(debugtalk_path))
 
-        shutil.rmtree(os.path.dirname(debugtalk_path))
-        return debugtalk
+        return debugtalk, debugtalk_path
     except Exception:
         print(traceback.print_exc())
 
@@ -208,10 +219,12 @@ def debug_suite(suite, project, obj, config, save=True):
 
     test_sets = []
     debugtalk = load_debugtalk(project)
+    debugtalk_content = debugtalk[0]
+    debugtalk_path = debugtalk[1]
+    os.chdir(os.path.dirname(debugtalk_path))
     for index in range(len(suite)):
-        # copy.deepcopy 修复引用bug
         testcases = copy.deepcopy(
-            parse_tests(suite[index], debugtalk, project, name=obj[index]['name'], config=config[index]))
+            parse_tests(suite[index], debugtalk_content, project, name=obj[index]['name'], config=config[index]))
         test_sets.append(testcases)
 
     kwargs = {
@@ -222,11 +235,12 @@ def debug_suite(suite, project, obj, config, save=True):
     summary = parse_summary(runner.summary)
     if save:
         save_summary("", summary, project, type=1)
-
+    os.chdir(BASE_DIR)
+    shutil.rmtree(os.path.dirname(debugtalk_path))
     return summary
 
 
-def debug_api(api, project, name=None, config=None, save=True, test_data=None):
+def debug_api(api, project, name=None, config=None, save=False, test_data=None):
     """debug api
         api :dict or list
         project: int
@@ -241,10 +255,14 @@ def debug_api(api, project, name=None, config=None, save=True, test_data=None):
         """
         api = [api]
 
-    testcase_list = [parse_tests(api, load_debugtalk(project), project, name=name, config=config)]
+    debugtalk = load_debugtalk(project)
+    debugtalk_content = debugtalk[0]
+    debugtalk_path = debugtalk[1]
+    os.chdir(os.path.dirname(debugtalk_path))
+    testcase_list = [parse_tests(api, debugtalk_content, project, name=name, config=config)]
 
     failFast = False
-    if 'failFast' in config.keys():
+    if config and 'failFast' in config.keys():
         failFast = True if (config["failFast"] == 'true' or config["failFast"] is True) else False
 
     kwargs = {
@@ -259,7 +277,8 @@ def debug_api(api, project, name=None, config=None, save=True, test_data=None):
     summary = parse_summary(runner.summary)
     if save:
         save_summary("", summary, project, type=1)
-
+    os.chdir(BASE_DIR)
+    shutil.rmtree(os.path.dirname(debugtalk_path))
     return summary
 
 

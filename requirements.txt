@@ -6,4 +6,6 @@ mysqlclient == 1.3.13
 beautifulsoup4 == 4.6.3
 tornado == 5.1.1
 django-celery == 3.2.2
+pillow
+djangorestframework-jwt
 uwsgi == 2.0.18

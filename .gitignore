@@ -5,8 +5,10 @@ myconfig.conf
 logs
 .idea
 fastrunner/migrations/*initial.py
-fastuser/migrations/*initial.py
 fastrunner/migrations/*_auto_*.py
+fastrunner/migrations/*_remove_*.py
+media/*
+tempWorkDir/*
 
 #python
 *.py[cod]

@@ -175,19 +175,19 @@ VARIABLES_UPDATE_SUCCESS = {
 CONFIG_ADD_SUCCESS = {
     'code': '0081',
     'success': True,
-    'msg': '环境添加成功'
+    'msg': '配置添加成功'
 }
 
 CONFIG_NOT_EXISTS = {
     "code": "0082",
     "success": False,
-    "msg": "指定的环境不存在"
+    "msg": "指定的配置不存在"
 }
 
 CONFIG_UPDATE_SUCCESS = {
     "code": "0083",
     "success": True,
-    "msg": "环境更新成功"
+    "msg": "配置更新成功"
 }
 
 TASK_ADD_SUCCESS = {

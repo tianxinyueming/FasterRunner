@@ -224,7 +224,7 @@ class Parse(object):
             "list": 5,
             "dict": 6,
         }
-        if content:
+        try:
             key = str(type(content).__name__)
 
             if key in ["list", "dict"]:
@@ -232,8 +232,8 @@ class Parse(object):
             else:
                 content = str(content)
             return var_type[key], content
-        else:
-            return 1, ''
+        except:
+            return 1, None
 
     def parse_http(self):
         """

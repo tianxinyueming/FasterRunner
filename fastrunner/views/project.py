@@ -2,7 +2,9 @@ from django.core.exceptions import ObjectDoesNotExist
 from django.utils.decorators import method_decorator
 from django.http import FileResponse
 from rest_framework.views import APIView
-from rest_framework.viewsets import GenericViewSet
+from rest_framework.viewsets import GenericViewSet, ModelViewSet
+from rest_framework import mixins
+from rest_framework import status
 from fastrunner import models, serializers
 from FasterRunner import pagination
 from rest_framework.response import Response
@@ -11,92 +13,15 @@ from fastrunner.utils import prepare
 from fastrunner.utils.decorator import request_log
 from fastrunner.utils.runner import DebugCode
 from fastrunner.utils.tree import get_tree_max_id
-from FasterRunner.settings import MEDIA_ROOT
-import os
 
 
-class ProjectView(GenericViewSet):
+class ProjectView(ModelViewSet):
     """
     项目增删改查
     """
     queryset = models.Project.objects.all().order_by('-update_time')
     serializer_class = serializers.ProjectSerializer
     pagination_class = pagination.MyCursorPagination
-
-    @method_decorator(request_log(level='DEBUG'))
-    def list(self, request):
-        """
-        查询项目信息
-        """
-        projects = self.get_queryset()
-        page_projects = self.paginate_queryset(projects)
-        serializer = self.get_serializer(page_projects, many=True)
-        return self.get_paginated_response(serializer.data)
-
-    @method_decorator(request_log(level='INFO'))
-    def add(self, request):
-        """添加项目 {
-            name: str
-        }
-        """
-
-        name = request.data["name"]
-
-        if models.Project.objects.filter(name=name).first():
-            response.PROJECT_EXISTS["name"] = name
-            return Response(response.PROJECT_EXISTS)
-        # 反序列化
-        serializer = serializers.ProjectSerializer(data=request.data)
-
-        if serializer.is_valid():
-            serializer.save()
-            project = models.Project.objects.get(name=name)
-            project.filePath = MEDIA_ROOT + '/' + str(project.id) + '/'
-            project.save()
-            init_result = prepare.project_init(project)
-            if not init_result:
-                models.Project.objects.get(name=name).delete()
-                return Response(response.SYSTEM_ERROR)
-            return Response(response.PROJECT_ADD_SUCCESS)
-
-        return Response(response.SYSTEM_ERROR)
-
-    @method_decorator(request_log(level='INFO'))
-    def update(self, request):
-        """
-        编辑项目
-        """
-
-        try:
-            project = models.Project.objects.get(id=request.data['id'])
-        except (KeyError, ObjectDoesNotExist):
-            return Response(response.SYSTEM_ERROR)
-
-        if request.data['name'] != project.name:
-            if models.Project.objects.filter(name=request.data['name']).first():
-                return Response(response.PROJECT_EXISTS)
-
-        # 调用save方法update_time字段才会自动更新
-        project.name = request.data['name']
-        project.desc = request.data['desc']
-        project.save()
-
-        return Response(response.PROJECT_UPDATE_SUCCESS)
-
-    @method_decorator(request_log(level='INFO'))
-    def delete(self, request):
-        """
-        删除项目
-        """
-        try:
-            project = models.Project.objects.get(id=request.data['id'])
-
-            project.delete()
-            prepare.project_end(project)
-
-            return Response(response.PROJECT_DELETE_SUCCESS)
-        except ObjectDoesNotExist:
-            return Response(response.SYSTEM_ERROR)
 
     @method_decorator(request_log(level='INFO'))
     def single(self, request, **kwargs):
@@ -116,6 +41,16 @@ class ProjectView(GenericViewSet):
         project_info.update(serializer.data)
 
         return Response(project_info)
+
+
+class DashboardView(GenericViewSet):
+    """
+    dashboard信息
+    """
+
+    @method_decorator(request_log(level='INFO'))
+    def get(self, request, **kwargs):
+        return Response(prepare.get_project_detail(kwargs['pk']))
 
 
 class TreeView(APIView):
@@ -177,92 +112,57 @@ class TreeView(APIView):
         return Response(response.TREE_UPDATE_SUCCESS)
 
 
-class FileView(GenericViewSet):
+class FileView(ModelViewSet):
     """
-    文件上传 下载
+    list:当前项目文件列表
+    create:上传与更新文件
+    destroy:删除文件
     """
-    queryset = models.ModelWithFileField.objects
     serializer_class = serializers.FileSerializer
+    pagination_class = pagination.MyPageNumberPagination
 
-    @method_decorator(request_log(level='DEBUG'))
-    def list(self, request):
-        """
-        查询文件列表
-        """
-        project = request.query_params['project']
+    def get_queryset(self):
+        if self.action == 'create':
+            project = self.request.data['project']
+            name = self.request.data['name']
+            return models.ModelWithFileField.objects.filter(project__id=project, name=name).order_by('-update_time')
+        else:
+            project = self.request.query_params['project']
+            return models.ModelWithFileField.objects.filter(project__id=project).order_by('-update_time')
 
-        files = self.get_queryset().filter(project_id=project).order_by('-update_time')
-        if 'search' in request.query_params.keys() and request.query_params["search"] != '':
-            files = files.filter(key__contains=request.query_params["search"])
-        pagination_queryset = self.paginate_queryset(files)
-        serializer = self.get_serializer(pagination_queryset, many=True)
+    def create(self, request, *args, **kwargs):
+        if not self.get_queryset():
+            serializer = self.get_serializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+            self.perform_create(serializer)
+            headers = self.get_success_headers(serializer.data)
+            return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+        else:
+            pk = self.get_queryset()[0].id
+            # instance = self.get_object()
+            instance = models.ModelWithFileField.objects.get(pk=pk)
 
-        return self.get_paginated_response(serializer.data)
+            partial = kwargs.pop('partial', False)
+            serializer = self.get_serializer(instance, data=request.data, partial=partial)
+            serializer.is_valid(raise_exception=True)
+            self.perform_update(serializer)
+            if getattr(instance, '_prefetched_objects_cache', None):
+                # If 'prefetch_related' has been applied to a queryset, we need to
+                # forcibly invalidate the prefetch cache on the instance.
+                instance._prefetched_objects_cache = {}
 
-    @method_decorator(request_log(level='INFO'))
-    def upload(self, request):
-        """
-        接收文件并更新保存
-        """
-        try:
-            # 打开特定的文件进行二进制的写操作
-            myFile = request.FILES['file']
-            project_id = request.POST["project_id"]
-            if not os.path.exists(MEDIA_ROOT + '/' + str(project_id)):
-                os.makedirs(MEDIA_ROOT + '/' + str(project_id))
-            filePath = MEDIA_ROOT + '/' + str(project_id) + '/' + myFile.name
+            return Response(serializer.data)
 
-            if models.ModelWithFileField.objects.filter(filePath=filePath).first():
-                FileObject = models.ModelWithFileField.objects.get(filePath=filePath)
-            else:
-                FileObject = models.ModelWithFileField()
-                FileObject.name = myFile.name
-                FileObject.project_id = project_id
-                FileObject.filePath = filePath
-
-            with open(filePath, 'wb+') as f:
-                # 分块写入文件
-                for chunk in myFile.chunks():
-                    f.write(chunk)
-
-            FileObject.save()
-            return Response(response.FILE_UPLOAD_SUCCESS)
-        except ObjectDoesNotExist:
-            return Response(response.FILE_FAIL)
-
-    @method_decorator(request_log(level='INFO'))
-    def delete(self, request, **kwargs):
-        try:
-            if kwargs.get('pk'):  # 单个删除
-                models.ModelWithFileField.objects.get(id=kwargs['pk']).delete()
-            else:
-                for content in request.data:
-                    models.ModelWithFileField.objects.get(id=content['id']).delete()
-
-        except ObjectDoesNotExist:
-            return Response(response.FILE_NOT_EXISTS)
-
-        return Response(response.FILE_DEL_SUCCESS)
-
-    @method_decorator(request_log(level='DEBUG'))
-    def download(self, request, **kwargs):
-        """下载文件"""
-        try:
-            if kwargs.get('pk'):
-                fileObject = models.ModelWithFileField.objects.get(id=kwargs['pk'])
-                filename = fileObject.name
-                filepath = MEDIA_ROOT + '/' + str(fileObject.project_id) + '/' + filename
-                if not os.path.exists(filepath):
-                    return Response( response.FILE_NOT_EXISTS )
-                else:
-                    fileresponse = FileResponse(open(filepath, 'rb'))
-                    fileresponse["Content-Type"] = "application/octet-stream"
-                    fileresponse["Content-Disposition"] = "attachment;filename={}".format(filename)
-                    return fileresponse
-            else:
-                return Response(response.KEY_MISS)
-        except ObjectDoesNotExist:
-            return Response(response.FILE_DOWNLOAD_FAIL)
+    def destroy(self, request, *args, **kwargs):
+        if kwargs.get('pk') and int(kwargs['pk']) != -1:
+            instance = self.get_object()
+            self.perform_destroy(instance)
+        elif request.data:
+            for content in request.data:
+                self.kwargs['pk'] = content['id']
+                instance = self.get_object()
+                self.perform_destroy(instance)
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class PycodeView(GenericViewSet):

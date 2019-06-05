@@ -16,7 +16,6 @@ class ReportView(GenericViewSet):
     """
     报告视图
     """
-    authentication_classes = ()
     queryset = models.Report.objects
     serializer_class = serializers.ReportSerializer
     pagination_class = pagination.MyPageNumberPagination

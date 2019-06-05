@@ -12,7 +12,7 @@ class ProjectSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = models.Project
-        fields = ['id', 'name', 'desc', 'responsible', 'update_time', 'filePath']
+        fields = '__all__'
 
 
 class RelationSerializer(serializers.ModelSerializer):
@@ -180,7 +180,7 @@ class FileSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = models.ModelWithFileField
-        fields = ['id', 'create_time', 'update_time', 'name', 'project_id']
+        fields = '__all__'
 
 
 class PycodeSerializer(serializers.ModelSerializer):

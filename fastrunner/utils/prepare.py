@@ -58,69 +58,7 @@ def get_excel_info():
         models.Pycode.objects.create(project=project,
                                      name="get_account.py",
                                      desc="配合excel测试数据使用",
-                                     code="""
-# _*_ coding:utf-8 _*_
-import xlrd
-
-MEDIA_ROOT = your project mediaroot
-# 通过EXCEL获取表格数据
-class Xlaccountinfo():
-    def __init__(self, path=''):
-        self.xl = xlrd.open_workbook(path)
-
-    def floattostr(self, val):
-        if isinstance(val, float) and float(int(val)) != val:
-            val = str(int(val))
-        if val == 'true':
-            val = True
-        elif val == 'false':
-            val = False
-        return val
-
-    def get_sheetinfo_by_name(self, name):
-        self.sheet = self.xl.sheet_by_name(name)
-        return self.get_sheet_info()
-
-    def get_sheetinfo_by_index(self, index):
-        self.sheet = self.xl.sheet_by_index(index)
-        return self.get_sheet_info()
-
-    def get_sheetinfo_by_rowName(self, name):
-        self.sheet = self.xl.sheet_by_name(name)
-        infolist = []
-        for col in range(self.sheet.ncols):
-            if col == 0:
-                listKey = [self.floattostr(val) for val in self.sheet.col_values(col)]
-            elif col == 1:
-                info = [self.floattostr(val) for val in self.sheet.col_values(col)]
-                tmp = zip(listKey, info)
-                infolist.append(dict(tmp))
-        return infolist
-
-    def get_sheet_info(self):
-        infolist = []
-        for row in range(1, self.sheet.nrows):
-            if row == 1:
-                listKey = [self.floattostr(val) for val in self.sheet.row_values(row)]
-            else:
-                info = [self.floattostr(val) for val in self.sheet.row_values(row)]
-                tmp = zip(listKey, info)
-                infolist.append(dict(tmp))
-        return infolist
-
-
-# linux环境用
-def xlsxaccount(excelName,sheetName):
-    xlinfo = Xlaccountinfo(MEDIA_ROOT+excelName)
-    info = xlinfo.get_sheetinfo_by_name(sheetName)
-    return info
-
-
-def xlsxPlatform(excelName, sheetName):
-    xlinfo = Xlaccountinfo(MEDIA_ROOT+excelName)
-    info = xlinfo.get_sheetinfo_by_rowName(sheetName)
-    return info
-                                            """)
+                                     code="")
         # 自动生成API tree
         models.Relation.objects.create(project=project)
         # 自动生成Test Tree

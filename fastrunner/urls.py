@@ -21,24 +21,23 @@ from rest_framework.routers import DefaultRouter
 from fastrunner.views import project, api, config, schedule, run, suite, report
 
 router = DefaultRouter()
-
-# 配置host_ip
+# 项目信息
 router.register(r'host_ip', config.HostIPView, base_name='host_ip')
+# 配置host_ip
+router.register(r'project', project.ProjectView, base_name='project')
+# 文件管理
+router.register(r'file', project.FileView, base_name='file')
+# dashboard
+#router.register(r'dashboard', project.DashboardView, base_name='dashboard')
 
 urlpatterns = [
-    # 开发登录
-    url(r'', include('rest_framework.urls', namespace='rest_framework')),
-
     url(r'^', include(router.urls)),
 
-    # 项目相关接口地址
-    path('project/', project.ProjectView.as_view({
-        "get": "list",
-        "post": "add",
-        "patch": "update",
-        "delete": "delete"
-    })),
     path('project/<int:pk>/', project.ProjectView.as_view({"get": "single"})),
+
+    path('dashboard/<int:pk>/', project.DashboardView.as_view({
+        "get": "get"
+    })),
 
     # 定时任务相关接口
     path('schedule/', schedule.ScheduleView.as_view({
@@ -64,17 +63,6 @@ urlpatterns = [
 
     # 二叉树接口地址
     path('tree/<int:pk>/', project.TreeView.as_view()),
-
-    # 文件上传 修改 删除接口地址
-    path('testdata/', project.FileView.as_view({
-        "post": "upload",
-        "get": "list",
-        "delete": "delete"
-    })),
-    path('testdata/<int:pk>/', project.FileView.as_view({
-        "delete": "delete",
-        "post": "download"
-    })),
 
     # api接口模板地址
     path('api/', api.APITemplateView.as_view({

@@ -33,6 +33,9 @@ def run_api(request):
     api = Format(request.data)
     api.parse()
 
+    test_data = None
+    if request.data["testDataExcel"] != '请选择' and request.data["testDataSheet"]:
+        test_data = (request.data["testDataExcel"], request.data["testDataSheet"])
     config = None
     if name != '请选择':
         try:
@@ -60,7 +63,7 @@ def run_api(request):
     #         api.testcase = parse_host(host, api.testcase)
     #     except ObjectDoesNotExist:
     #         logger.error("指定域名不存在:{name}".format(name=host))
-    summary = loader.debug_api(api.testcase, api.project, config=parse_host(host, config))
+    summary = loader.debug_api(api.testcase, api.project, config=parse_host(host, config), test_data=test_data)
 
     return Response(summary)
 
@@ -74,8 +77,11 @@ def run_api_pk(request, **kwargs):
     api = models.API.objects.get(id=kwargs['pk'])
     name = request.query_params["config"]
     config = None if name == '请选择' else eval(models.Config.objects.get(name=name, project=api.project).body)
-
     test_case = eval(api.body)
+
+    test_data = None
+    if request.query_params["testDataExcel"] != '请选择' and request.query_params["testDataSheet"]:
+        test_data = (request.query_params["testDataExcel"], request.query_params["testDataSheet"])
     temp_config = []
     if host != "请选择":
         host = models.HostIP.objects.get(name=host, project=api.project)
@@ -94,7 +100,7 @@ def run_api_pk(request, **kwargs):
     #     except ObjectDoesNotExist:
     #         logger.error("指定域名不存在:{name}".format(name=host))
     try:
-        summary = loader.debug_api(test_case, api.project.id, config=parse_host(host, config))
+        summary = loader.debug_api(test_case, api.project.id, config=parse_host(host, config), test_data=test_data)
     except Exception:
         print(traceback.print_exc())
 
@@ -196,7 +202,7 @@ def run_testsuite(request):
         if not config and temp_config:
             config = {"variables": temp_config}
 
-        summary = loader.debug_api(test_case, project, name=name, config=parse_host(host, config), test_data=test_data)
+        summary = loader.debug_api(test_case, project, name=name, config=parse_host(host, config), save=True, test_data=test_data)
 
         return Response(summary)
     except Exception:
@@ -210,7 +216,9 @@ def run_testsuite_pk(request, **kwargs):
         {
             project: int,
             name: str,
-            host: str
+            host: str,
+            testDataExcel: str
+            testDataSheet: str
         }
     """
     try:
@@ -250,7 +258,7 @@ def run_testsuite_pk(request, **kwargs):
         if not config and temp_config:
             config = {"variables": temp_config}
 
-        summary = loader.debug_api(test_case, project, name=name, config=parse_host(host, config), test_data=test_data)
+        summary = loader.debug_api(test_case, project, name=name, config=parse_host(host, config), save=True, test_data=test_data)
 
         return Response(summary)
     except Exception:
@@ -359,7 +367,7 @@ def run_test(request):
         if not config and temp_config:
             config = {"variables": temp_config}
 
-        summary = loader.debug_api(parse_host(host, loader.load_test(body)), project, config=parse_host(host, config), test_data=test_data)
+        summary = loader.debug_api(parse_host(host, loader.load_test(body)), project, config=parse_host(host, config), save=True, test_data=test_data)
 
         return Response(summary)
     except Exception:
