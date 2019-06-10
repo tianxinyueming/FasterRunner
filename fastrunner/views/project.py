@@ -1,6 +1,5 @@
 from django.core.exceptions import ObjectDoesNotExist
 from django.utils.decorators import method_decorator
-from django.http import FileResponse
 from rest_framework.views import APIView
 from rest_framework.viewsets import GenericViewSet, ModelViewSet
 from rest_framework import mixins
@@ -41,6 +40,15 @@ class ProjectView(ModelViewSet):
         project_info.update(serializer.data)
 
         return Response(project_info)
+
+    def perform_create(self, serializer):
+        instance = serializer.save()
+        prepare.project_init(instance)
+
+    def perform_destroy(self, instance):
+        project_id = instance.id
+        prepare.project_end(project_id)
+        instance.delete()
 
 
 class DashboardView(GenericViewSet):

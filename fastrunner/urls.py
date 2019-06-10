@@ -22,9 +22,9 @@ from fastrunner.views import project, api, config, schedule, run, suite, report
 
 router = DefaultRouter()
 # 项目信息
-router.register(r'host_ip', config.HostIPView, base_name='host_ip')
-# 配置host_ip
 router.register(r'project', project.ProjectView, base_name='project')
+# 配置host_ip
+router.register(r'host_ip', config.HostIPView, base_name='host_ip')
 # 文件管理
 router.register(r'file', project.FileView, base_name='file')
 # dashboard
