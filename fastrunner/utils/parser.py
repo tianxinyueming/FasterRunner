@@ -233,7 +233,7 @@ class Parse(object):
                 content = str(content)
             return var_type[key], content
         except:
-            return 1, None
+            return 1, 'null'
 
     def parse_http(self):
         """
