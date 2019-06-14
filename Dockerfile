@@ -1,7 +1,5 @@
 FROM ubuntu:16.04
 
-MAINTAINER yinquanwang
-
 ENV LANG C.UTF-8
 ENV TZ=Asia/Shanghai
 # Install required packages and remove the apt packages cache when done.
@@ -18,17 +16,19 @@ RUN sed -i s@/archive.ubuntu.com/@/mirrors.aliyun.com/@g /etc/apt/sources.list &
     python3-pip \
     libmysqlclient-dev \
     nginx \
+    vim \
+    python3-dateutil \
     tzdata && \
     dpkg-reconfigure --frontend noninteractive tzdata
 
-WORKDIR /opt/workspace/FasterRunner/
+WORKDIR /home/ebao/fastrunner/FasterRunner/
 
 COPY . .
 
 RUN  pip3 install -r ./requirements.txt -i \
-    https://pypi.tuna.tsinghua.edu.cn/simple \
+    https://pypi.douban.com/simple \
     --default-timeout=100 && \
-    ln -s /opt/workspace/FasterRunner/nginx.conf /etc/nginx/sites-enabled/
+    ln -s /home/ebao/fastrunner/FasterRunner/nginx.conf /etc/nginx/sites-enabled/
 
 EXPOSE 5000
 

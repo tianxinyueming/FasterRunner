@@ -208,6 +208,7 @@ def save_api(request_data, now_tree):
         except:
             print(traceback.print_exc())
 
+
 # 递归处理
 def import_api_data(file_path, now_tree):
     """
@@ -256,8 +257,8 @@ def import_api_data(file_path, now_tree):
 
 
 if __name__ == '__main__':
-    MY_API_FILEPATH = r'D:\haibotest\api-tests\dealerCloud\api'
-    PROJECT_ID = 1  # 看自己现在的项目id
+    MY_API_FILEPATH = r'D:\haibotest\api-tests\noDealer\api'
+    PROJECT_ID = 6  # 看自己现在的项目id
 
     TREE_TYPE = 1
     relation = models.Relation.objects.get(project__id=PROJECT_ID, type=TREE_TYPE)

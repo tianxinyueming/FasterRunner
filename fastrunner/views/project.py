@@ -1,3 +1,5 @@
+import os
+
 from django.core.exceptions import ObjectDoesNotExist
 from django.utils.decorators import method_decorator
 from rest_framework.views import APIView
@@ -7,12 +9,13 @@ from rest_framework import status
 from fastrunner import models, serializers
 from FasterRunner import pagination
 from rest_framework.response import Response
+
 from fastrunner.utils import response
 from fastrunner.utils import prepare
 from fastrunner.utils.decorator import request_log
 from fastrunner.utils.runner import DebugCode
 from fastrunner.utils.tree import get_tree_max_id
-
+from FasterRunner.settings import MEDIA_ROOT
 
 class ProjectView(ModelViewSet):
     """
@@ -164,11 +167,13 @@ class FileView(ModelViewSet):
     def destroy(self, request, *args, **kwargs):
         if kwargs.get('pk') and int(kwargs['pk']) != -1:
             instance = self.get_object()
+            os.remove(os.path.join(MEDIA_ROOT, str(instance.file)))
             self.perform_destroy(instance)
         elif request.data:
             for content in request.data:
                 self.kwargs['pk'] = content['id']
                 instance = self.get_object()
+                os.remove(os.path.join(MEDIA_ROOT, str(instance.file)))
                 self.perform_destroy(instance)
         return Response(status=status.HTTP_204_NO_CONTENT)
 

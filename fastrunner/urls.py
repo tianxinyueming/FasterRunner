@@ -18,7 +18,7 @@ from django.urls import path
 from django.conf.urls import url, include
 from rest_framework.routers import DefaultRouter
 
-from fastrunner.views import project, api, config, schedule, run, suite, report
+from fastrunner.views import project, api, config, schedule, run, suite, report, download
 
 router = DefaultRouter()
 # 项目信息
@@ -28,11 +28,13 @@ router.register(r'host_ip', config.HostIPView, base_name='host_ip')
 # 文件管理
 router.register(r'file', project.FileView, base_name='file')
 # dashboard
-#router.register(r'dashboard', project.DashboardView, base_name='dashboard')
+# router.register(r'dashboard', project.DashboardView, base_name='dashboard')
 
 urlpatterns = [
     url(r'^', include(router.urls)),
-
+    # 文件下载接口
+    url('download/', download.DownloadView.as_view()),
+    # dashboard
     path('project/<int:pk>/', project.ProjectView.as_view({"get": "single"})),
 
     path('dashboard/<int:pk>/', project.DashboardView.as_view({

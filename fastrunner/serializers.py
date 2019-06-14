@@ -134,10 +134,15 @@ class HostIPSerializerPost(serializers.ModelSerializer):
     """
     环境配置信息序列化
     """
+    hostInfo = serializers.JSONField(required=True, help_text="环境配置参数")
 
     class Meta:
         model = models.HostIP
-        fields = ('name', 'project', 'hostInfo')
+        fields = '__all__'
+
+    def validate(self, attrs):
+        attrs["hostInfo"] = json.dumps(attrs["hostInfo"])
+        return attrs
 
 
 class HostIPSerializerList(serializers.ModelSerializer):
@@ -177,6 +182,8 @@ class FileSerializer(serializers.ModelSerializer):
     """
     文件信息序列化
     """
+    file = serializers.FileField(required=True, write_only=True, allow_empty_file=False, use_url='testdatas', label="文件",
+                                 help_text="文件", error_messages={"blank": "请上传文件", "required": "请上传文件"})
 
     class Meta:
         model = models.ModelWithFileField

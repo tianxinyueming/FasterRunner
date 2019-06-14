@@ -46,18 +46,6 @@ def project_init(project):
         models.Pycode.objects.create(project=project,
                                      name="debugtalk.py",
                                      desc="项目的根目录文件，项目中所使用函数都从此中调用",
-                                     code="""
-# _*_ coding:utf-8 _*_
-from get_account import xlsxaccount
-def get_excel_info():
-    excelName = os.environ['excelName']
-    sheetName = os.environ['excelsheet']
-    tempInfo = xlsxaccount(group, insurance)
-    return tempInfo
-                                            """)
-        models.Pycode.objects.create(project=project,
-                                     name="get_account.py",
-                                     desc="配合excel测试数据使用",
                                      code="")
         # 自动生成API tree
         models.Relation.objects.create(project=project)
