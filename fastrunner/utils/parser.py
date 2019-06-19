@@ -86,6 +86,7 @@ class Format(object):
                 self.__parameters = body['parameters'].pop('parameters')
                 self.__desc["parameters"] = body['parameters'].pop('desc')
                 self.__failFast = body.pop('failFast')
+                self.__outParams = body.pop('outParams')
 
             self.__level = level
             self.testcase = None
@@ -125,7 +126,8 @@ class Format(object):
                     "base_url": self.base_url,
                 },
                 "desc": self.__desc,
-                "failFast": self.__failFast
+                "failFast": self.__failFast,
+                "outParams": self.__outParams
             }
 
             if self.__parameters:
@@ -183,7 +185,8 @@ class Parse(object):
                     ],
                     "setup_hooks": [],
                     "teardown_hooks": []
-                }
+                },
+                "outParams": []
         """
         self.name = body.get('name')
         self.__request = body.get('request')  # header files params json data
@@ -207,6 +210,7 @@ class Parse(object):
         elif level is "config":
             self.__parameters = body.get("parameters")
             self.__failFast = body.get("failFast", 'true')
+            self.__outParams = body.get('outParams', [])
 
         self.__level = level
         self.testcase = None
@@ -309,6 +313,7 @@ class Parse(object):
             test["parameters"] = init
             test["skipIf"] = self.__skipIf
             test["failFast"] = self.__failFast
+            test["outParams"] = self.__outParams
             if self.__parameters:
                 test["parameters"] = []
                 for content in self.__parameters:

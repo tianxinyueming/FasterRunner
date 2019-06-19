@@ -159,6 +159,11 @@ def parse_tests(testcases, debugtalk, project, name=None, config=None):
                         content[key] = eval(value.replace("\n", ""))
                     except:
                         content[key] = value
+        if 'outParams' in config.keys():
+            config["output"] = []
+            out_params = config.pop('outParams')
+            for params in out_params:
+                config["output"].append(params["key"])
         testset["config"] = config
 
     if name:

@@ -167,13 +167,17 @@ class FileView(ModelViewSet):
     def destroy(self, request, *args, **kwargs):
         if kwargs.get('pk') and int(kwargs['pk']) != -1:
             instance = self.get_object()
-            os.remove(os.path.join(MEDIA_ROOT, str(instance.file)))
+            filepath = os.path.join(MEDIA_ROOT, str(instance.file))
+            if os.path.exists(filepath):
+                os.remove(filepath)
             self.perform_destroy(instance)
         elif request.data:
             for content in request.data:
                 self.kwargs['pk'] = content['id']
                 instance = self.get_object()
-                os.remove(os.path.join(MEDIA_ROOT, str(instance.file)))
+                filepath = os.path.join(MEDIA_ROOT, str(instance.file))
+                if os.path.exists(filepath):
+                    os.remove(filepath)
                 self.perform_destroy(instance)
         return Response(status=status.HTTP_204_NO_CONTENT)
 

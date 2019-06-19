@@ -8151,6 +8151,38 @@
                                 Skip: {{ test_suite_summary.stat.skipped }} ;
                             </div>
                             <ul class='collapsible node-list' data-collapsible='accordion'>
+                                <li>
+                                    <div class='collapsible-header'>
+                                        <div class='node-name'>in_out</div>
+                                    </div>
+                                    <div class='collapsible-body'>
+                                        <div class='node-steps'>
+                                            <table class='bordered table-results'>
+                                                <thead>
+                                                <tr>
+                                                    <th>Status</th>
+                                                    <th>Params</th>
+                                                    <th>Details</th>
+                                                </tr>
+                                                </thead>
+                                                {% for in_out_key,in_out_value in test_suite_summary.in_out.items %}
+                                                {% if in_out_value %}
+                                                <tbody>
+                                                    <tr class='info' status='info'>
+                                                        <td class='status info' title='in_out' alt='info'><i
+                                                                class='material-icons'>info</i></td>
+                                                        <td class='timestamp'>{{in_out_key}}</td>
+                                                        <td class='step-details'>
+                                                            <pre class="code-block">{{ in_out_value| json_dumps}}</pre>
+                                                        </td>
+                                                    </tr>
+                                                </tbody>
+                                                {% endif %}
+                                                {% endfor %}
+                                            </table>
+                                        </div>
+                                    </div>
+                                </li>
                                 {% for record in test_suite_summary.records %}
                                     {% if  record.status == 'success' %}
                                         <li class='node level-1 leaf pass' status='pass'
@@ -8223,7 +8255,7 @@
                                                 <td class='step-details'>{{ record.meta_data.response.status_code }}</td>
                                             </tr>
                                             {% for key, value in record.meta_data.request.items %}
-                                                {% if key != 'url' and key != 'method' and key != 'start_timestamp' and key != 'verify' %}
+                                                {% if key != 'url' and key != 'method' and key != 'start_timestamp' and key != 'verify' and key != 'json'%}
                                                     <tr class='warning' status='warning'>
                                                         <td class='status warning' title='{{ key }}' alt='warning'><i
                                                                 class='material-icons'>low_priority</i></td>
@@ -8237,7 +8269,7 @@
                                                                 {% for header_key, header_value in record.meta_data.request.headers.items %}
                                                                     <pre class="code-block">{{ header_key }} &nbsp;&nbsp;{{ header_value }}</pre>
                                                                 {% endfor %}
-                                                            {% elif key == "text" or key == "json" or key == "body" %}
+                                                            {% elif key == "text" or key == "body" %}
                                                                 <pre class="code-block">{{ value| json_dumps }}</pre>
                                                             {% else %}
                                                                 {{ value }}
