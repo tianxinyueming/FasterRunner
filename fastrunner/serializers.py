@@ -45,7 +45,6 @@ class CaseSerializer(serializers.ModelSerializer):
     """
     用例信息序列化
     """
-    tag = serializers.CharField(source="get_tag_display")
 
     class Meta:
         model = models.Case
@@ -197,4 +196,5 @@ class PycodeSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = models.Pycode
-        fields = ['id', 'update_time', 'code', 'project', 'desc', 'name']
+        fields = '__all__'
+        # fields = ['id', 'update_time', 'code', 'project', 'desc', 'name']

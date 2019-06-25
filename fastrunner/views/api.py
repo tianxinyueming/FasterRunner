@@ -70,6 +70,7 @@ class APITemplateView(GenericViewSet):
     def update(self, request, **kwargs):
         """
         更新接口
+        更新接口时同时更新testcase中的case_step的request和header
         """
         pk = kwargs['pk']
         api = Format(request.data)
@@ -84,6 +85,18 @@ class APITemplateView(GenericViewSet):
 
         try:
             models.API.objects.filter(id=pk).update(**api_body)
+            case_step = models.CaseStep.objects.filter(apiId=pk)
+            for case in case_step:
+                csae_body = eval(case.body)
+                csae_body["request"] = api_body["body"]["request"]
+                csae_body["desc"]["header"] = api_body["body"]["desc"]["header"]
+                csae_body["desc"]["data"] = api_body["body"]["desc"]["data"]
+                csae_body["desc"]["files"] = api_body["body"]["desc"]["files"]
+                csae_body["desc"]["params"] = api_body["body"]["desc"]["params"]
+
+                case.body = csae_body
+                case.save()
+
         except ObjectDoesNotExist:
             return Response(response.API_NOT_FOUND)
 

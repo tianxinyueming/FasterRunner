@@ -14,8 +14,10 @@
 - 重构了域名管理功能，用于配置环境信息，可在api/配置/testcase中直接以$引用
 - 重构了用户认证，使用了drf-jwt应用，移除了注册功能，直接从后台分配账号（出于安全考虑）
 - api/testcase运行时可以指定excel测试数据，在后台运行时会生成系统环境变量“excelName”/“excelsheet”，在驱动代码里可以os.environ["excelsheet"]方式获取，并进一步做自己的处理
-- 增加了测试简易的excel报告，提取简要的信息便于大批量运行时查看
+- 增加了测试简易的excel报告，提取了简要的报错信息，便于大批量运行测试用例时查看
 - 抓取httprunner错误返回到前端
+- 配置管理里新加了output参数，output将写入报告里
+- 更新了api与testcase的关系。沿用httprunner作者的思想，测试用例中的request/headers/method/url内容直接调用相应api中的内容；并且更新api的request/header/method/url时，会自动改变测试用例中的request/headers/method/url
 ```
 
 ## Docker 部署 uwsgi+nginx模式

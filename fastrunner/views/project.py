@@ -6,16 +6,17 @@ from rest_framework.views import APIView
 from rest_framework.viewsets import GenericViewSet, ModelViewSet
 from rest_framework import mixins
 from rest_framework import status
-from fastrunner import models, serializers
-from FasterRunner import pagination
 from rest_framework.response import Response
 
+from fastrunner import models, serializers
+from FasterRunner import pagination
 from fastrunner.utils import response
 from fastrunner.utils import prepare
 from fastrunner.utils.decorator import request_log
 from fastrunner.utils.runner import DebugCode
 from fastrunner.utils.tree import get_tree_max_id
 from FasterRunner.settings import MEDIA_ROOT
+
 
 class ProjectView(ModelViewSet):
     """
@@ -182,116 +183,57 @@ class FileView(ModelViewSet):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
-class PycodeView(GenericViewSet):
+class PycodeRunView(GenericViewSet, mixins.RetrieveModelMixin):
     """
-    驱动代码 查询 编辑 添加
+    驱动代码调试运行
     """
-    queryset = models.Pycode.objects
     serializer_class = serializers.PycodeSerializer
 
-    @method_decorator(request_log(level='DEBUG'))
-    def list(self, request):
-        """
-        查询文件列表
-        """
-        project = request.query_params['project']
-        search = request.query_params["search"]
-
-        files = self.get_queryset().filter(project_id=project).order_by('-update_time')
-        if search != '':
-            files = files.filter(key__contains=search)
-        pagination_queryset = self.paginate_queryset(files)
-        serializer = self.get_serializer(pagination_queryset, many=True)
-
-        return self.get_paginated_response(serializer.data)
+    def get_queryset(self):
+        project = self.request.query_params["project"]
+        queryset = models.Pycode.objects.filter(project_id=project).order_by('-update_time')
+        return queryset
 
     @method_decorator(request_log(level='INFO'))
-    def add(self, request):
-        """添加文件 {
-            name: str
-        }
-        """
+    def retrieve(self, request, *args, **kwargs):
+        instance = self.get_object()
+        serializer = self.get_serializer(instance)
 
-        name = request.data["name"]
-        if models.Pycode.objects.filter(name=name).first():
-            response.PYCODE_EXISTS["name"] = name
-            return Response(response.PYCODE_EXISTS)
-        # 反序列化
-        serializer = serializers.PycodeSerializer(data=request.data)
-
-        if serializer.is_valid():
-            serializer.save()
-            return Response(response.PYCODE_ADD_SUCCESS)
-
-        return Response(response.SYSTEM_ERROR)
-
-    @method_decorator(request_log(level='INFO'))
-    def pycodeDebug(self, request, **kwargs):
-        """
-        得到debugtalk code
-        """
-        pk = kwargs.pop('pk')
-        try:
-            queryset = models.Pycode.objects.get(id=pk)
-        except ObjectDoesNotExist:
-            return Response(response.DEBUGTALK_NOT_EXISTS)
-
-        serializer = self.get_serializer(queryset, many=False)
-
-        return Response(serializer.data)
-
-    @method_decorator(request_log(level='INFO'))
-    def update(self, request, **kwargs):
-        """
-        编辑debugtalk.py 代码并保存
-        """
-
-        try:
-            pk = kwargs.pop('pk')
-            if 'code' in request.data.keys():
-                models.Pycode.objects.filter(id=pk).update(code=request.data['code'])
-            else:
-                models.Pycode.objects.filter(id=pk).update(name=request.data['name'],desc=request.data['desc'])
-        except ObjectDoesNotExist:
-            return Response(response.SYSTEM_ERROR)
-
-        return Response(response.PYCODE_UPDATE_SUCCESS)
-
-    @method_decorator(request_log(level='INFO'))
-    def run(self, request, **kwargs):
-        try:
-            code = request.data["code"]
-            project = request.data["project"]
-            filename = request.data["name"]
-        except KeyError:
-            return Response(response.KEY_MISS)
-        debug = DebugCode(code, project, filename)
+        debug = DebugCode(serializer.data["code"], serializer.data["project"], serializer.data["name"])
         debug.run()
-        resp = response.PYCODE_RUN_SUCCESS
-        resp["msg"] = debug.resp
-        return Response(resp)
+
+        debug_rsp = {
+            "msg": debug.resp
+        }
+        return Response(data=debug_rsp)
+
+
+class PycodeView(ModelViewSet):
+    """
+    驱动代码模块
+    """
+    serializer_class = serializers.PycodeSerializer
+    pagination_class = pagination.MyPageNumberPagination
+
+    def get_queryset(self):
+        project = self.request.query_params["project"]
+        queryset = models.Pycode.objects.filter(project_id=project).order_by('-update_time')
+        if self.action == 'list':
+            queryset = queryset.filter(name__contains=self.request.query_params["search"])
+        return queryset
 
     @method_decorator(request_log(level='INFO'))
-    def delete(self, request, **kwargs):
-        try:
-            if kwargs.get('pk'):  # 单个删除
-                file = models.Pycode.objects.get(id=kwargs['pk'])
-                if file.name != 'debugtalk.py':
-                    file.delete()
-                else:
-                    return Response(response.DEBUGTALK_CANNOT_DELETE)
+    def destroy(self, request, *args, **kwargs):
+        if kwargs.get('pk') and int(kwargs['pk']) != -1:
+            instance = self.get_object()
+            if instance.name == 'debugtalk.py':
+                Response(status=status.HTTP_423_LOCKED)
             else:
-                isdebugtalk = False
-                for content in request.data:
-                    file = models.Pycode.objects.get(id=content['id'])
-                    if file.name != 'debugtalk.py':
-                        file.delete()
-                    else:
-                        isdebugtalk = True
-                if isdebugtalk:
-                    return Response(response.DEBUGTALK_CANNOT_DELETE)
-
-        except ObjectDoesNotExist:
-            return Response(response.FILE_NOT_EXISTS)
-
-        return Response(response.FILE_DEL_SUCCESS)
+                self.perform_destroy(instance)
+        elif request.data:
+            for content in request.data:
+                self.kwargs['pk'] = content['id']
+                instance = self.get_object()
+                if instance.name != 'debugtalk.py':
+                    self.perform_destroy(instance)
+        return Response(status=status.HTTP_204_NO_CONTENT)

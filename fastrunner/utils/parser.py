@@ -45,15 +45,24 @@ class Format(object):
         """
         try:
             self.name = body.pop('name')
-
-            self.__headers = body['header'].pop('header')
-            self.__params = body['request']['params'].pop('params')
-            self.__data = body['request']['form'].pop('data')
-            self.__json = body['request'].pop('json')
-            self.__files = body['request']['files'].pop('files')
             self.__variables = body['variables'].pop('variables')
             self.__setup_hooks = body['hooks'].pop('setup_hooks')
             self.__teardown_hooks = body['hooks'].pop('teardown_hooks')
+            if 'header' in body.keys():
+                self.__headers = body['header'].pop('header')
+            else:
+                self.__headers = {}
+            if 'request' in body.keys():
+                self.__params = body['request']['params'].pop('params')
+                self.__data = body['request']['form'].pop('data')
+                self.__json = body['request'].pop('json')
+                self.__files = body['request']['files'].pop('files')
+            else:
+                self.__params = ''
+                self.__data = ''
+                self.__json = ''
+                self.__files = ''
+
             if 'skipIf' in body.keys():
                 if body["skipIf"].lower() == "true":
                     self.__skipIf = True
@@ -65,18 +74,19 @@ class Format(object):
                 self.__skipIf = False
 
             self.__desc = {
-                "header": body['header'].pop('desc'),
-                "data": body['request']['form'].pop('desc'),
-                "files": body['request']['files'].pop('desc'),
-                "params": body['request']['params'].pop('desc'),
                 "variables": body['variables'].pop('desc'),
             }
+            if 'request' in body.keys():
+                self.__desc["data"] = body['request']['form'].pop('desc')
+                self.__desc["files"] = body['request']['files'].pop('desc')
+                self.__desc["params"] = body['request']['params'].pop('desc')
+            if 'header' in body.keys():
+                self.__desc["header"] = body['header'].pop('desc')
 
             if level is 'test':
-                self.url = body.pop('url')
-                self.method = body.pop('method')
-
-                self.__times = body.pop('times')
+                self.url = body.pop('url', '')
+                self.method = body.pop('method', '')
+                self.__times = body.pop('times', 1)
                 self.__extract = body['extract'].pop('extract')
                 self.__validate = body.pop('validate').pop('validate')
                 self.__desc['extract'] = body['extract'].pop('desc')
@@ -86,7 +96,7 @@ class Format(object):
                 self.__parameters = body['parameters'].pop('parameters')
                 self.__desc["parameters"] = body['parameters'].pop('desc')
                 self.__failFast = body.pop('failFast')
-                self.__outParams = body.pop('outParams')
+                self.__outParams = body.pop('outParams', [])
 
             self.__level = level
             self.testcase = None

@@ -112,29 +112,46 @@ def update_casestep(body, case):
             format_http.parse()
             name = format_http.name
             new_body = format_http.testcase
-            url = format_http.url
-            method = format_http.method
+
+            apiId = case_step.apiId
+            api = models.API.objects.get(id=apiId)
+            url = api.url
+            method = api.method
+            api_body = eval(api.body)
+            new_body["request"] = api_body["request"]
+            new_body["desc"]["header"] = api_body["desc"]["header"]
+            new_body["desc"]["data"] = api_body["desc"]["data"]
+            new_body["desc"]["files"] = api_body["desc"]["files"]
+            new_body["desc"]["params"] = api_body["desc"]["params"]
 
         except KeyError:
             if 'case' in test.keys():
                 case_step = models.CaseStep.objects.get(id=test['id'])
+                new_body = eval(case_step.body)
+                if case_step.method != "config":
+                    apiId = case_step.apiId
+                    api = models.API.objects.get(id=apiId)
+                    url = api.url
+                    method = api.method
+                    api_body = eval(api.body)
+                    new_body["request"] = api_body["request"]
+                    new_body["desc"]["header"] = api_body["desc"]["header"]
+                    new_body["desc"]["data"] = api_body["desc"]["data"]
+                    new_body["desc"]["files"] = api_body["desc"]["files"]
+                    new_body["desc"]["params"] = api_body["desc"]["params"]
             elif test["body"]["method"] == "config":
                 case_step = models.Config.objects.get(name=test['body']['name'])
-            else:
-                case_step = models.API.objects.get(id=test['id'])
-
-            new_body = eval(case_step.body)
-            name = test['body']['name']
-
-            if case_step.name != name:
-                new_body['name'] = name
-
-            if test["body"]["method"] == "config":
+                new_body = eval(case_step.body)
                 url = ""
                 method = "config"
             else:
-                url = test['body']['url']
-                method = test['body']['method']
+                case_step = models.API.objects.get(id=test['id'])
+                new_body = eval(case_step.body)
+                url = case_step.url
+                method = case_step.method
+
+            name = test['body']['name']
+            new_body['name'] = name
 
         kwargs = {
             "name": name,
@@ -161,9 +178,7 @@ def generate_casestep(body, case):
     [{
         id: int,
         project: int,
-        name: str,
-        method: str,
-        url: str
+        name: str
     }]
 
     """
@@ -177,8 +192,18 @@ def generate_casestep(body, case):
             format_http.parse()
             name = format_http.name
             new_body = format_http.testcase
-            url = format_http.url
-            method = format_http.method
+
+            apiId = test['id']
+            api = models.API.objects.get(id=apiId)
+            url = api.url
+            method = api.method
+            new_body['name'] = name
+            api_body = eval(api.body)
+            new_body["request"] = api_body["request"]
+            new_body["desc"]["header"] = api_body["desc"]["header"]
+            new_body["desc"]["data"] = api_body["desc"]["data"]
+            new_body["desc"]["files"] = api_body["desc"]["files"]
+            new_body["desc"]["params"] = api_body["desc"]["params"]
 
         except KeyError:
             if test["body"]["method"] == "config":
@@ -187,16 +212,15 @@ def generate_casestep(body, case):
                 config = models.Config.objects.get(name=name)
                 url = config.base_url
                 new_body = eval(config.body)
+                apiId = 0
             else:
-                api = models.API.objects.get(id=test['id'])
+                apiId = test['id']
+                api = models.API.objects.get(id=apiId)
+                url = api.url
+                method = api.method
                 new_body = eval(api.body)
                 name = test['body']['name']
-
-                if api.name != name:
-                    new_body['name'] = name
-
-                url = test['body']['url']
-                method = test['body']['method']
+                new_body['name'] = name
 
         kwargs = {
             "name": name,
@@ -204,7 +228,8 @@ def generate_casestep(body, case):
             "url": url,
             "method": method,
             "step": index,
-            "case": case
+            "case": case,
+            "apiId": apiId
         }
 
         models.CaseStep.objects.create(**kwargs)

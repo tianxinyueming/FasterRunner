@@ -29,6 +29,12 @@ router.register(r'host_ip', config.HostIPView, base_name='host_ip')
 router.register(r'file', project.FileView, base_name='file')
 # dashboard
 # router.register(r'dashboard', project.DashboardView, base_name='dashboard')
+# 测试用例
+router.register(r'testcase', suite.TestCaseView, base_name='testcase')
+router.register(r'testcasecopy', suite.TestCaseCopyView, base_name='testcasecopy')
+# 驱动代码
+router.register(r'pycode', project.PycodeView, base_name='pycode')
+router.register(r'runpycode', project.PycodeRunView, base_name="runpycode")
 
 urlpatterns = [
     url(r'^', include(router.urls)),
@@ -51,18 +57,6 @@ urlpatterns = [
         "delete": "delete"
     })),
 
-    # pycode相关接口地址
-    path('pycode/<int:pk>/', project.PycodeView.as_view({
-        "get": "pycodeDebug",
-        "patch": "update",
-        "post": "run"
-    })),
-    path('pycode/', project.PycodeView.as_view({
-        "get": "list",
-        "post": "add",
-        "delete": "delete"
-    })),
-
     # 二叉树接口地址
     path('tree/<int:pk>/', project.TreeView.as_view()),
 
@@ -77,19 +71,6 @@ urlpatterns = [
         "get": "single",
         "patch": "update",
         "post": "copy"
-    })),
-
-    # test接口地址
-    path('test/', suite.TestCaseView.as_view({
-        "get": "get",
-        "post": "post",
-        "delete": "delete"
-    })),
-
-    path('test/<int:pk>/', suite.TestCaseView.as_view({
-        "delete": "delete",
-        "post": "copy",
-        "patch": "patch"
     })),
 
     path('teststep/<int:pk>/', suite.CaseStepView.as_view()),

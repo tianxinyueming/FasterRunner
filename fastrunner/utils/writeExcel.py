@@ -33,7 +33,6 @@ class WriteExcel(object):
         self.sheet.set_column('A:A', 20)  # 测试报告名称
         self.sheet.set_column('B:B', 10)  # 用例状态
         self.sheet.set_column('C:C', 25)  # 报错接口
-        self.sheet.set_column('D:F', 60)  # traceback 请求报文，返回报文
         self.xl_write(*title)
 
     def log_write(self, *args):
@@ -60,7 +59,8 @@ def write_excel_log(summary):
             temp_out_keys.extend(testcases["in_out"]["out"].keys())
         out_keys = list(set(temp_out_keys))
         xinfo = WriteExcel(excel_report_path)
-        xinfo.log_init('测试用例', '测试报告名称', '用例状态', '报错接口', 'traceback', '请求报文', '返回报文', out_keys)
+        xinfo.log_init('测试用例', '测试报告名称', '用例状态', '报错接口', out_keys, 'traceback', '请求报文', '返回报文')
+        xinfo.log_write('name', 'status', 'error_api', out_keys, 'traceback', 'request', 'response')
         for testcases in summary["details"]:
             error_api = testcases["records"][-1]
             error_request = error_api["meta_data"]["request"]
@@ -68,6 +68,7 @@ def write_excel_log(summary):
             testcases_out = testcases["in_out"]["out"]
 
             testcase_status = 'pass' if testcases["success"] else 'fail'
+            error_api_name = error_api["name"] if not testcases["success"] else ''
             error_traceback = error_api["attachment"] if error_api["attachment"] else ''
             error_request_body = error_request["body"] if 'body' in error_request.keys() and error_request["body"] is not None else ''
             error_response_content = error_response["content"] if 'content' in error_response.keys() and error_response["content"] is not None else ''
@@ -75,10 +76,10 @@ def write_excel_log(summary):
             out_values = [''] * len(out_keys)
             for out_key, out_value in testcases_out.items():
                 if out_key in out_keys:
-                    out_values[out_keys.index(out_key)] = out_value
+                    out_values[out_keys.index(out_key)] = str(out_value)
 
-            xinfo.log_write(testcases["name"], testcase_status, error_api["name"], error_traceback, error_request_body,
-                            error_response_content, out_values)
+            xinfo.log_write(testcases["name"], testcase_status, error_api_name, out_values,
+                            error_traceback, error_request_body, error_response_content)
         xinfo.xl_close()
 
     return excel_report_path

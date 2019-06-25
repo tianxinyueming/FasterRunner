@@ -1,109 +1,19 @@
-from django.core.exceptions import ObjectDoesNotExist
 from django.utils.decorators import method_decorator
 from rest_framework.views import APIView
-from rest_framework.viewsets import GenericViewSet
-from fastrunner import models, serializers
-
+from rest_framework.viewsets import GenericViewSet, ModelViewSet
+from rest_framework import mixins
+from rest_framework import status
 from rest_framework.response import Response
-from fastrunner.utils import response
+
+from fastrunner import models, serializers
+from FasterRunner import pagination
 from fastrunner.utils import prepare
 from fastrunner.utils.decorator import request_log
 
 
-class TestCaseView(GenericViewSet):
-    queryset = models.Case.objects
-    serializer_class = serializers.CaseSerializer
-    tag_options = {
-        "冒烟用例": 1,
-        "集成用例": 2,
-        "监控脚本": 3
-    }
-
-    @method_decorator(request_log(level='INFO'))
-    def get(self, request):
-        """
-        查询指定CASE列表，不包含CASE STEP
-        {
-            "project": int,
-            "node": int
-        }
-        """
-        node = request.query_params["node"]
-        project = request.query_params["project"]
-        search = request.query_params["search"]
-        # update_time 降序排列
-        queryset = self.get_queryset().filter(project__id=project).order_by('-update_time')
-
-        if search != '':
-            queryset = queryset.filter(name__contains=search)
-
-        if node != '':
-            queryset = queryset.filter(relation=node)
-
-        pagination_query = self.paginate_queryset(queryset)
-        serializer = self.get_serializer(pagination_query, many=True)
-
-        return self.get_paginated_response(serializer.data)
-
-    @method_decorator(request_log(level='INFO'))
-    def copy(self, request, **kwargs):
-        """
-        pk int: test id
-        {
-            name: test name
-            relation: int
-            project: int
-        }
-        """
-        pk = kwargs['pk']
-        name = request.data['name']
-        case = models.Case.objects.get(id=pk)
-        case.id = None
-        case.name = name
-        case.save()
-
-        case_step = models.CaseStep.objects.filter(case__id=pk)
-
-        for step in case_step:
-            step.id = None
-            step.case = case
-            step.save()
-
-        return Response(response.CASE_ADD_SUCCESS)
-
-    @method_decorator(request_log(level='INFO'))
-    def patch(self, request, **kwargs):
-        """
-        更新测试用例集
-        {
-            name: str
-            id: int
-            body: []
-            project: int
-        }
-        """
-
-        pk = kwargs['pk']
-        project = request.data.pop("project")
-        body = request.data.pop('body')
-        relation = request.data.pop("relation")
-
-        if models.Case.objects.exclude(id=pk).filter(name=request.data['name'], project__id=project, relation=relation).first():
-            return Response(response.CASE_EXISTS)
-
-        case = models.Case.objects.get(id=pk)
-
-        prepare.update_casestep(body, case)
-
-        request.data['tag'] = self.tag_options[request.data['tag']]
-        models.Case.objects.filter(id=pk).update(**request.data)
-
-        return Response(response.CASE_UPDATE_SUCCESS)
-
-    @method_decorator(request_log(level='INFO'))
-    def post(self, request):
-        """
-        新增测试用例集
+class TestCaseView(ModelViewSet):
+    """
+    create:新增测试用例集
         {
             name: str
             project: int,
@@ -112,53 +22,112 @@ class TestCaseView(GenericViewSet):
             body: [{
                 id: int,
                 project: int,
-                name: str,
-                method: str,
-                url: str
+                name: str
             }]
         }
-        """
+    """
+    serializer_class = serializers.CaseSerializer
+    pagination_class = pagination.MyPageNumberPagination
 
-        try:
-            pk = request.data['project']
-            request.data['project'] = models.Project.objects.get(id=pk)
-
-        except KeyError:
-            return Response(response.KEY_MISS)
-
-        except ObjectDoesNotExist:
-            return Response(response.PROJECT_NOT_EXISTS)
-
-        body = request.data.pop('body')
-
-        request.data['tag'] = self.tag_options[request.data['tag']]
-        models.Case.objects.create(**request.data)
-
-        case = models.Case.objects.filter(**request.data).first()
-
-        prepare.generate_casestep(body, case)
-
-        return Response(response.CASE_ADD_SUCCESS)
+    def get_queryset(self):
+        project = self.request.query_params["project"]
+        queryset = models.Case.objects.filter(project__id=project).order_by('-update_time')
+        if self.action == 'list':
+            node = self.request.query_params["node"]
+            search = self.request.query_params["search"]
+            if search != '':
+                queryset = queryset.filter(name__contains=search)
+            if node != '':
+                queryset = queryset.filter(relation=node)
+        return queryset
 
     @method_decorator(request_log(level='INFO'))
-    def delete(self, request, **kwargs):
-        """
-        pk: test id delete single
-        [{id:int}] delete batch
-        """
-        pk = kwargs.get('pk')
+    def create(self, request, *args, **kwargs):
+        body = request.data.pop('body')
 
-        try:
-            if pk:
-                prepare.case_end(pk)
-            else:
-                for content in request.data:
-                    prepare.case_end(content['id'])
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
 
-        except ObjectDoesNotExist:
-            return Response(response.SYSTEM_ERROR)
+        case = models.Case.objects.filter(**request.data).first()
+        prepare.generate_casestep(body, case)
 
-        return Response(response.CASE_DELETE_SUCCESS)
+        headers = self.get_success_headers(serializer.data)
+        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+
+    @method_decorator(request_log(level='INFO'))
+    def update(self, request, *args, **kwargs):
+        body = request.data.pop('body')
+
+        partial = kwargs.pop('partial', False)
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=request.data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+
+        prepare.update_casestep(body, instance)
+
+        self.perform_update(serializer)
+
+        if getattr(instance, '_prefetched_objects_cache', None):
+            # If 'prefetch_related' has been applied to a queryset, we need to
+            # forcibly invalidate the prefetch cache on the instance.
+            instance._prefetched_objects_cache = {}
+
+        return Response(serializer.data)
+
+    @method_decorator(request_log(level='INFO'))
+    def destroy(self, request, *args, **kwargs):
+        if kwargs.get('pk') and int(kwargs['pk']) != -1:
+            instance = self.get_object()
+            prepare.case_end(int(kwargs['pk']))
+            self.perform_destroy(instance)
+        elif request.data:
+            for content in request.data:
+                self.kwargs['pk'] = content['id']
+                instance = self.get_object()
+                prepare.case_end(int(kwargs['pk']))
+                self.perform_destroy(instance)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class TestCaseCopyView(GenericViewSet, mixins.CreateModelMixin):
+    """
+    create: 复制case
+        {
+            name: test name
+            relation: int
+            project: int
+            id: testcase id
+        }
+    """
+    serializer_class = serializers.CaseSerializer
+
+    @method_decorator(request_log(level='INFO'))
+    def create(self, request, *args, **kwargs):
+        pk = request.data['id']
+        name = request.data['name']
+
+        case_info = models.Case.objects.get(id=pk)
+        request_data = {
+            "name": name,
+            "relation": case_info.relation,
+            "length": case_info.length,
+            "tag": case_info.tag,
+            "project": case_info.project_id
+        }
+
+        serializer = self.get_serializer(data=request_data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+
+        case_step = models.CaseStep.objects.filter(case__id=pk)
+        for step in case_step:
+            step.id = None
+            step.case_id = serializer.data["id"]
+            step.save()
+
+        headers = self.get_success_headers(serializer.data)
+        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
 
 
 class CaseStepView(APIView):

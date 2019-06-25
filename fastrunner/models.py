@@ -75,8 +75,8 @@ class Case(BaseTable):
         (2, "集成用例"),
         (3, "监控脚本")
     )
-    name = models.CharField("用例名称", null=False, max_length=100)
-    project = models.ForeignKey(Project, on_delete=models.CASCADE)
+    name = models.CharField("用例名称", null=False, max_length=500)
+    project = models.ForeignKey(Project, on_delete=models.CASCADE, help_text="所属项目")
     relation = models.IntegerField("节点id", null=False)
     length = models.IntegerField("API个数", null=False)
     tag = models.IntegerField("用例标签", choices=tag, default=2)
@@ -91,12 +91,13 @@ class CaseStep(BaseTable):
         verbose_name = "用例信息 Step"
         db_table = "CaseStep"
 
-    name = models.CharField("用例名称", null=False, max_length=100)
+    name = models.CharField("api名称", null=False, max_length=100)
     body = models.TextField("主体信息", null=False)
-    url = models.CharField("请求地址", null=False, max_length=200)
+    url = models.CharField("请求地址", null=False, max_length=300)
     method = models.CharField("请求方式", null=False, max_length=10)
-    case = models.ForeignKey(Case, on_delete=models.CASCADE)
-    step = models.IntegerField("顺序", null=False)
+    case = models.ForeignKey(Case, on_delete=models.CASCADE, help_text="所属case")
+    step = models.IntegerField("api顺序", null=False)
+    apiId = models.IntegerField('所属api_id', null=False, default=0)
 
 
 class HostIP(BaseTable):
