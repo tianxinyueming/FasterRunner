@@ -94,6 +94,8 @@ class APITemplateView(GenericViewSet):
                 csae_body["desc"]["files"] = api_body["body"]["desc"]["files"]
                 csae_body["desc"]["params"] = api_body["body"]["desc"]["params"]
 
+                case.url = api_body["url"]
+                case.method = api_body["method"]
                 case.body = csae_body
                 case.save()
 

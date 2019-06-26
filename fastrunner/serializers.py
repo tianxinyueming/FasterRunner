@@ -1,7 +1,7 @@
 import json
 from rest_framework import serializers
 from fastrunner import models
-from fastrunner.utils.parser import Parse
+from fastrunner.utils.parser import Parse, parser_variables
 from djcelery import models as celery_models
 
 
@@ -155,7 +155,8 @@ class HostIPSerializerList(serializers.ModelSerializer):
         fields = '__all__'
 
     def get_hostInfo(self, obj):
-        hostinfo = json.loads(obj.hostInfo)
+        temp_hostinfo = json.loads(obj.hostInfo)
+        hostinfo = parser_variables(temp_hostinfo["variables"], temp_hostinfo["desc"])
         return hostinfo
 
 

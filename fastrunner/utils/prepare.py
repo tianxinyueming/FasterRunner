@@ -113,6 +113,7 @@ def update_casestep(body, case):
             name = format_http.name
             new_body = format_http.testcase
 
+            case_step = models.CaseStep.objects.get(id=test['id'])
             apiId = case_step.apiId
             api = models.API.objects.get(id=apiId)
             url = api.url
@@ -131,14 +132,17 @@ def update_casestep(body, case):
                 if case_step.method != "config":
                     apiId = case_step.apiId
                     api = models.API.objects.get(id=apiId)
+                    api_body = eval(api.body)
                     url = api.url
                     method = api.method
-                    api_body = eval(api.body)
                     new_body["request"] = api_body["request"]
                     new_body["desc"]["header"] = api_body["desc"]["header"]
                     new_body["desc"]["data"] = api_body["desc"]["data"]
                     new_body["desc"]["files"] = api_body["desc"]["files"]
                     new_body["desc"]["params"] = api_body["desc"]["params"]
+                else:
+                    url = ""
+                    method = "config"
             elif test["body"]["method"] == "config":
                 case_step = models.Config.objects.get(name=test['body']['name'])
                 new_body = eval(case_step.body)

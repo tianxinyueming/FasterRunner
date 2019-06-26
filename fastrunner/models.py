@@ -110,8 +110,9 @@ class HostIP(BaseTable):
         db_table = "HostIP"
 
     name = models.CharField(null=False, max_length=20, unique=True, help_text="环境名称")
-    hostInfo = models.TextField(null=False, help_text="环境详情")
+    hostInfo = models.TextField(null=False, help_text="环境信息详情")
     project = models.ForeignKey(Project, on_delete=models.CASCADE, help_text="所属项目")
+    base_url = models.URLField(null=True, blank=True, help_text="环境根地址")
 
 
 class Variables(BaseTable):

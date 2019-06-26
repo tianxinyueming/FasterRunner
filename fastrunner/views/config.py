@@ -264,6 +264,9 @@ class VariablesView(GenericViewSet):
 
 
 class HostIPView(viewsets.ModelViewSet):
+    """
+    域名管理视图
+    """
     pagination_class = pagination.MyPageNumberPagination
 
     def get_queryset(self):
@@ -285,3 +288,34 @@ class HostIPView(viewsets.ModelViewSet):
                 instance = self.get_object()
                 self.perform_destroy(instance)
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class HostIPCopyView(GenericViewSet, mixins.CreateModelMixin):
+    """
+    create: 复制hostIp
+        {
+            name: hostIp name
+            id: hostIp id
+        }
+    """
+    serializer_class = serializers.HostIPSerializerPost
+
+    @method_decorator(request_log(level='INFO'))
+    def create(self, request, *args, **kwargs):
+        pk = request.data['id']
+        name = request.data['name']
+
+        host_info = models.HostIP.objects.get(id=pk)
+        request_data = {
+            "name": name,
+            "hostInfo": json.loads(host_info.hostInfo),
+            "project": host_info.project_id,
+            "base_url": host_info.base_url
+        }
+
+        serializer = self.get_serializer(data=request_data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+
+        headers = self.get_success_headers(serializer.data)
+        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)

@@ -40,22 +40,29 @@ def run_api(request):
     if name != '请选择':
         try:
             config = eval(models.Config.objects.get(name=name, project__id=api.project).body)
-
         except ObjectDoesNotExist:
             logger.error("指定配置文件不存在:{name}".format(name=name))
             return Response(config_err)
 
     temp_config = []
+    temp_baseurl = ''
     if host != "请选择":
         host = models.HostIP.objects.get(name=host, project=api.project)
-        host_info = eval(host.hostInfo)
-        for info in host_info:
-            temp_config.append({info["key"]: info["value"]})
-    if config and temp_config:
-        for _temp in temp_config:
-            config["variables"].append(_temp)
-    if not config and temp_config:
-        config = {"variables": temp_config}
+        host_info = json.loads(host.hostInfo)
+        temp_config.extend(host_info["variables"])
+        temp_baseurl = host.base_url if host.base_url else ''
+
+    if config and host != "请选择":
+        config["variables"].extend(temp_config)
+        if temp_baseurl:
+            config["request"]["base_url"] = temp_baseurl
+    if not config and host != "请选择":
+        config = {
+            "variables": temp_config,
+            "request": {
+                "base_url": temp_baseurl
+            }
+        }
 
     # if host != "请选择":
     #     try:
@@ -84,17 +91,26 @@ def run_api_pk(request, **kwargs):
     test_data = None
     if request.query_params["testDataExcel"] != '请选择' and request.query_params["testDataSheet"]:
         test_data = (request.query_params["testDataExcel"], request.query_params["testDataSheet"])
+
     temp_config = []
+    temp_baseurl = ''
     if host != "请选择":
         host = models.HostIP.objects.get(name=host, project=api.project)
-        host_info = eval(host.hostInfo)
-        for info in host_info:
-            temp_config.append({info["key"]: info["value"]})
-    if config and temp_config:
-        for _temp in temp_config:
-            config["variables"].append(_temp)
-    if not config and temp_config:
-        config = {"variables": temp_config}
+        host_info = json.loads(host.hostInfo)
+        temp_config.extend(host_info["variables"])
+        temp_baseurl = host.base_url if host.base_url else ''
+
+    if config and host != "请选择":
+        config["variables"].extend(temp_config)
+        if temp_baseurl:
+            config["request"]["base_url"] = temp_baseurl
+    if not config and host != "请选择":
+        config = {
+            "variables": temp_config,
+            "request": {
+                "base_url": temp_baseurl
+            }
+        }
     # if host != "请选择":
     #     try:
     #         host = models.HostIP.objects.get(name=host, project=api.project).value.splitlines()
@@ -131,17 +147,26 @@ def run_api_tree(request):
 
     config = None if config == '请选择' else eval(models.Config.objects.get(name=config, project__id=project).body)
     test_case = []
+
     temp_config = []
+    temp_baseurl = ''
     if host != "请选择":
         host = models.HostIP.objects.get(name=host, project=project)
-        host_info = eval(host.hostInfo)
-        for info in host_info:
-            temp_config.append({info["key"]: info["value"]})
-    if config and temp_config:
-        for _temp in temp_config:
-            config["variables"].append(_temp)
-    if not config and temp_config:
-        config = {"variables": temp_config}
+        host_info = json.loads(host.hostInfo)
+        temp_config.extend(host_info["variables"])
+        temp_baseurl = host.base_url if host.base_url else ''
+
+    if config and host != "请选择":
+        config["variables"].extend(temp_config)
+        if temp_baseurl:
+            config["request"]["base_url"] = temp_baseurl
+    if not config and host != "请选择":
+        config = {
+            "variables": temp_config,
+            "request": {
+                "base_url": temp_baseurl
+            }
+        }
 
     for relation_id in relation:
         api = models.API.objects.filter(project__id=project, relation=relation_id).order_by('id').values('body')
@@ -182,26 +207,33 @@ def run_testsuite(request):
         test_data = (request.data["testDataExcel"], request.data["testDataSheet"])
     test_case = []
     config = None
+
     temp_config = []
+    temp_baseurl = ''
     if host != "请选择":
         host = models.HostIP.objects.get(name=host, project=project)
-        host_info = eval(host.hostInfo)
-        for info in host_info:
-            temp_config.append({info["key"]: info["value"]})
+        host_info = json.loads(host.hostInfo)
+        temp_config.extend(host_info["variables"])
+        temp_baseurl = host.base_url if host.base_url else ''
 
     for test in body:
         test = loader.load_test(test, project=project)
         if "base_url" in test["request"].keys():
             config = test
             continue
-
         test_case.append(parse_host(host, test))
 
-    if config and temp_config:
-        for _temp in temp_config:
-            config["variables"].append(_temp)
-    if not config and temp_config:
-        config = {"variables": temp_config}
+    if config and host != "请选择":
+        config["variables"].extend(temp_config)
+        if temp_baseurl:
+            config["request"]["base_url"] = temp_baseurl
+    if not config and host != "请选择":
+        config = {
+            "variables": temp_config,
+            "request": {
+                "base_url": temp_baseurl
+            }
+        }
     try:
         summary = loader.debug_api(test_case, project, name=name, config=parse_host(host, config), save=True, test_data=test_data)
     except Exception as e:
@@ -235,12 +267,14 @@ def run_testsuite_pk(request, **kwargs):
 
     test_case = []
     config = None
+
     temp_config = []
+    temp_baseurl = ''
     if host != "请选择":
         host = models.HostIP.objects.get(name=host, project=project)
-        host_info = eval(host.hostInfo)
-        for info in host_info:
-            temp_config.append({info["key"]: info["value"]})
+        host_info = json.loads(host.hostInfo)
+        temp_config.extend(host_info["variables"])
+        temp_baseurl = host.base_url if host.base_url else ''
 
     for content in test_list:
         body = eval(content["body"])
@@ -251,11 +285,17 @@ def run_testsuite_pk(request, **kwargs):
 
         test_case.append(parse_host(host, body))
 
-    if config and temp_config:
-        for _temp in temp_config:
-            config["variables"].append(_temp)
-    if not config and temp_config:
-        config = {"variables": temp_config}
+    if config and host != "请选择":
+        config["variables"].extend(temp_config)
+        if temp_baseurl:
+            config["request"]["base_url"] = temp_baseurl
+    if not config and host != "请选择":
+        config = {
+            "variables": temp_config,
+            "request": {
+                "base_url": temp_baseurl
+            }
+        }
     try:
         summary = loader.debug_api(test_case, project, name=name, config=parse_host(host, config), save=True, test_data=test_data)
     except Exception as e:
@@ -284,11 +324,12 @@ def run_suite_tree(request):
         host = request.data["host"]
 
         temp_config = []
+        temp_baseurl = ''
         if host != "请选择":
             host = models.HostIP.objects.get(name=host, project=project)
-            host_info = eval(host.hostInfo)
-            for info in host_info:
-                temp_config.append({info["key"]: info["value"]})
+            host_info = json.loads(host.hostInfo)
+            temp_config.extend(host_info["variables"])
+            temp_baseurl = host.base_url if host.base_url else ''
 
         test_sets = []
         suite_list = []
@@ -309,11 +350,17 @@ def run_suite_tree(request):
                         continue
                     testcase_list.append(parse_host(host, body))
                 # [[{scripts}, {scripts}], [{scripts}, {scripts}]]
-                if config and temp_config:
-                    for _temp in temp_config:
-                        config["variables"].append(_temp)
-                if not config and temp_config:
-                    config = {"variables": temp_config}
+                if config and host != "请选择":
+                    config["variables"].extend(temp_config)
+                    if temp_baseurl:
+                        config["request"]["base_url"] = temp_baseurl
+                if not config and host != "请选择":
+                    config = {
+                        "variables": temp_config,
+                        "request": {
+                            "base_url": temp_baseurl
+                        }
+                    }
                 config_list.append(parse_host(host, config))
                 test_sets.append(testcase_list)
                 suite_list = suite_list + suite
@@ -352,20 +399,27 @@ def run_test(request):
         test_data = (request.data["testDataExcel"], request.data["testDataSheet"])
 
     temp_config = []
+    temp_baseurl = ''
     if host != "请选择":
         host = models.HostIP.objects.get(name=host, project=project)
-        host_info = eval(host.hostInfo)
-        for info in host_info:
-            temp_config.append({info["key"]: info["value"]})
+        host_info = json.loads(host.hostInfo)
+        temp_config.extend(host_info["variables"])
+        temp_baseurl = host.base_url if host.base_url else ''
 
     if config:
         config = eval(models.Config.objects.get(project=project, name=config["name"]).body)
 
-    if config and temp_config:
-        for _temp in temp_config:
-            config["variables"].append(_temp)
-    if not config and temp_config:
-        config = {"variables": temp_config}
+    if config and host != "请选择":
+        config["variables"].extend(temp_config)
+        if temp_baseurl:
+            config["request"]["base_url"] = temp_baseurl
+    if not config and host != "请选择":
+        config = {
+            "variables": temp_config,
+            "request": {
+                "base_url": temp_baseurl
+            }
+        }
     try:
         summary = loader.debug_api(parse_host(host, loader.load_test(body)), project, config=parse_host(host, config), save=True, test_data=test_data)
     except Exception as e:

@@ -225,30 +225,6 @@ class Parse(object):
         self.__level = level
         self.testcase = None
 
-    @staticmethod
-    def __get_type(content):
-        """
-        返回data_type 默认string
-        """
-        var_type = {
-            "str": 1,
-            "int": 2,
-            "float": 3,
-            "bool": 4,
-            "list": 5,
-            "dict": 6,
-        }
-        try:
-            key = str(type(content).__name__)
-
-            if key in ["list", "dict"]:
-                content = json.dumps(content, ensure_ascii=False)
-            else:
-                content = str(content)
-            return var_type[key], content
-        except:
-            return 1, 'null'
-
     def parse_http(self):
         """
         标准前端脚本格式
@@ -310,7 +286,7 @@ class Parse(object):
                 test["validate"] = []
                 for content in self.__validate:
                     for key, value in content.items():
-                        obj = Parse.__get_type(value[1])
+                        obj = get_type(value[1])
                         test["validate"].append({
                             "expect": obj[1],
                             "actual": value[0],
@@ -330,7 +306,7 @@ class Parse(object):
                     for key, value in content.items():
                         test["parameters"].append({
                             "key": key,
-                            "value": Parse.__get_type(value)[1],
+                            "value": get_type(value)[1],
                             "desc": self.__desc["parameters"][key]
                         })
 
@@ -346,7 +322,7 @@ class Parse(object):
         if self.__request.get('data'):
             test["request"]["data"] = []
             for key, value in self.__request.pop('data').items():
-                obj = Parse.__get_type(value)
+                obj = get_type(value)
 
                 test['request']['data'].append({
                     "key": key,
@@ -381,16 +357,7 @@ class Parse(object):
                 json.dumps(self.__request.pop("json"), indent=4,
                            separators=(',', ': '), ensure_ascii=False)
         if self.__variables:
-            test["variables"] = []
-            for content in self.__variables:
-                for key, value in content.items():
-                    obj = Parse.__get_type(value)
-                    test["variables"].append({
-                        "key": key,
-                        "value": obj[1],
-                        "desc": self.__desc["variables"][key],
-                        "type": obj[0]
-                    })
+            test["variables"] = parser_variables(self.__variables, self.__desc["variables"])
 
         if self.__setup_hooks or self.__teardown_hooks:
             test["hooks"] = []
@@ -420,3 +387,46 @@ def format_json(value):
         return json.dumps(value, indent=4, separators=(',', ': '), ensure_ascii=False)
     except:
         return value
+
+
+def get_type(content):
+    """
+    返回data_type 默认string
+    """
+    var_type = {
+        "str": 1,
+        "int": 2,
+        "float": 3,
+        "bool": 4,
+        "list": 5,
+        "dict": 6,
+    }
+    try:
+        key = str(type(content).__name__)
+
+        if key in ["list", "dict"]:
+            content = json.dumps(content, ensure_ascii=False)
+        else:
+            content = str(content)
+        return var_type[key], content
+    except:
+        return 1, 'null'
+
+
+def parser_variables(list_content, desc_dict):
+    """
+    list_content = [{"key":"value"},{}]
+    desc_dict = {"key":"desc",}
+    """
+    parser_list = []
+    for content in list_content:
+        for key, value in content.items():
+            obj = get_type(value)
+            parser_list.append({
+                "key": key,
+                "value": obj[1],
+                "desc": desc_dict[key],
+                "type": obj[0]
+            })
+
+    return parser_list

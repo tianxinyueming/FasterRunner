@@ -11,7 +11,8 @@
 - 批量api模板上传（ 支持httprunner -V 1.X/2.X），根据自己本地情况更改db_tools/import_api_data.py中 “MY_API_FILEPATH PROJECT_ID” 后，在根目录下执行命令 python db_tools\import_api_data.py, 然后刷新即可
 - 支持skipIf机制。编辑testcase时可编辑api中skipIf一栏。
 - 支持testcase运行时failfast。 可在配置信息中控制failfast开关。
-- 重构了域名管理功能，用于配置环境信息，可在api/配置/testcase中直接以$引用
+- 重构了域名管理功能，用于配置环境相关信息，相当于配置管理的一个拆分，便于单个调试api以及快速切换环境，更好的组合配置信息与环境信息。而对于base_url字段，域名管理的权限高于配置管理，若域名管理里base_url不为空，则会覆盖配置管理的base_url。
+例如可以只将登录所需信息放在域名管理里。
 - 重构了用户认证，使用了drf-jwt应用，移除了注册功能，直接从后台分配账号（出于安全考虑）
 - api/testcase运行时可以指定excel测试数据，在后台运行时会生成系统环境变量“excelName”/“excelsheet”，在驱动代码里可以os.environ["excelsheet"]方式获取，并进一步做自己的处理
 - 增加了测试简易的excel报告，提取了简要的报错信息，便于大批量运行测试用例时查看
