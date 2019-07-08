@@ -189,60 +189,6 @@ def run_api_tree(request):
 
 @api_view(["POST"])
 @request_log(level='INFO')
-def run_testsuite(request):
-    """debug testsuite
-    {
-        name: str,
-        body: dict
-        host: str
-    }
-    """
-    body = request.data["body"]
-    project = request.data["project"]
-    name = request.data["name"]
-    host = request.data["host"]
-
-    test_data = None
-    if request.data["testDataExcel"] != '请选择' and request.data["testDataSheet"]:
-        test_data = (request.data["testDataExcel"], request.data["testDataSheet"])
-    test_case = []
-    config = None
-
-    temp_config = []
-    temp_baseurl = ''
-    if host != "请选择":
-        host = models.HostIP.objects.get(name=host, project=project)
-        host_info = json.loads(host.hostInfo)
-        temp_config.extend(host_info["variables"])
-        temp_baseurl = host.base_url if host.base_url else ''
-
-    for test in body:
-        test = loader.load_test(test, project=project)
-        if "base_url" in test["request"].keys():
-            config = test
-            continue
-        test_case.append(parse_host(host, test))
-
-    if config and host != "请选择":
-        config["variables"].extend(temp_config)
-        if temp_baseurl:
-            config["request"]["base_url"] = temp_baseurl
-    if not config and host != "请选择":
-        config = {
-            "variables": temp_config,
-            "request": {
-                "base_url": temp_baseurl
-            }
-        }
-    try:
-        summary = loader.debug_api(test_case, project, name=name, config=parse_host(host, config), save=True, test_data=test_data)
-    except Exception as e:
-        return Response({'traceback': str(e)}, status=400)
-    return Response(summary)
-
-
-@api_view(["GET"])
-@request_log(level='INFO')
 def run_testsuite_pk(request, **kwargs):
     """run testsuite by pk
         {
@@ -254,16 +200,17 @@ def run_testsuite_pk(request, **kwargs):
         }
     """
     pk = kwargs["pk"]
-
     test_list = models.CaseStep.objects.filter(case__id=pk).order_by("step").values("body")
 
-    project = request.query_params["project"]
-    name = request.query_params["name"]
-    host = request.query_params["host"]
+    project = request.data["project"]
+    name = request.data["name"]
+    host = request.data["host"]
+    back_async = request.data["async"]
+    report_name = request.data["reportName"]
 
     test_data = None
-    if request.query_params["testDataExcel"] != '请选择' and request.query_params["testDataSheet"]:
-        test_data = (request.query_params["testDataExcel"], request.query_params["testDataSheet"])
+    if request.data["testDataExcel"] != '请选择' and request.data["testDataSheet"]:
+        test_data = (request.data["testDataExcel"], request.data["testDataSheet"])
 
     test_case = []
     config = None
@@ -296,11 +243,17 @@ def run_testsuite_pk(request, **kwargs):
                 "base_url": temp_baseurl
             }
         }
+
     try:
-        summary = loader.debug_api(test_case, project, name=name, config=parse_host(host, config), save=True, test_data=test_data)
+        if back_async:
+            tasks.async_debug_test.delay(test_case, project, name=name, report_name=report_name, config=parse_host(host, config), test_data=test_data)
+            summary = loader.TEST_NOT_EXISTS
+            summary["msg"] = "用例运行中，请稍后查看报告"
+        else:
+            summary = loader.debug_api(test_case, project, name=name, config=parse_host(host, config), save=True, test_data=test_data, report_name=report_name)
+        return Response(summary)
     except Exception as e:
         return Response({'traceback': str(e)}, status=400)
-    return Response(summary)
 
 
 @api_view(['POST'])
@@ -319,8 +272,7 @@ def run_suite_tree(request):
     try:
         project = request.data['project']
         relation = request.data["relation"]
-        back_async = request.data["async"]
-        report = request.data["name"]
+        report_name = request.data["name"]
         host = request.data["host"]
 
         temp_config = []
@@ -338,13 +290,12 @@ def run_suite_tree(request):
             suite = list(models.Case.objects.filter(project__id=project,
                                                     relation=relation_id).order_by('id').values('id', 'name'))
             for content in suite:
-                test_list = models.CaseStep.objects. \
-                    filter(case__id=content["id"]).order_by("step").values("body")
+                test_list = models.CaseStep.objects.filter(case__id=content["id"]).order_by("step").values("body")
 
                 testcase_list = []
                 config = None
-                for content in test_list:
-                    body = eval(content["body"])
+                for case_content in test_list:
+                    body = eval(case_content["body"])
                     if "base_url" in body["request"].keys():
                         config = eval(models.Config.objects.get(name=body["name"], project__id=project).body)
                         continue
@@ -365,66 +316,13 @@ def run_suite_tree(request):
                 test_sets.append(testcase_list)
                 suite_list = suite_list + suite
 
-        if back_async:
-            tasks.async_debug_suite.delay(test_sets, project, suite_list, report, config_list)
-            summary = loader.TEST_NOT_EXISTS
-            summary["msg"] = "用例运行中，请稍后查看报告"
-        else:
-            try:
-                summary = loader.debug_suite(test_sets, project, suite_list, config_list)
-            except Exception as e:
-                return Response({'traceback': str(e)}, status=400)
+        tasks.async_debug_suite.delay(test_sets, project, suite_list, report_name, config_list)
+        summary = loader.TEST_NOT_EXISTS
+        summary["msg"] = "用例运行中，请稍后查看报告"
+
         return Response(summary)
-    except Exception:
-        print(traceback.print_exc())
-
-
-@api_view(["POST"])
-@request_log(level='INFO')
-def run_test(request):
-    """debug single test
-    {
-        host: str
-        body: dict
-        project :int
-        config: null or dict
-    }
-    """
-    body = request.data["body"]
-    config = request.data.get("config", None)
-    project = request.data["project"]
-    host = request.data["host"]
-    test_data = None
-    if request.data["testDataExcel"] != '请选择' and request.data["testDataSheet"]:
-        test_data = (request.data["testDataExcel"], request.data["testDataSheet"])
-
-    temp_config = []
-    temp_baseurl = ''
-    if host != "请选择":
-        host = models.HostIP.objects.get(name=host, project=project)
-        host_info = json.loads(host.hostInfo)
-        temp_config.extend(host_info["variables"])
-        temp_baseurl = host.base_url if host.base_url else ''
-
-    if config:
-        config = eval(models.Config.objects.get(project=project, name=config["name"]).body)
-
-    if config and host != "请选择":
-        config["variables"].extend(temp_config)
-        if temp_baseurl:
-            config["request"]["base_url"] = temp_baseurl
-    if not config and host != "请选择":
-        config = {
-            "variables": temp_config,
-            "request": {
-                "base_url": temp_baseurl
-            }
-        }
-    try:
-        summary = loader.debug_api(parse_host(host, loader.load_test(body)), project, config=parse_host(host, config), save=True, test_data=test_data)
     except Exception as e:
         return Response({'traceback': str(e)}, status=400)
-    return Response(summary)
 
 
 @api_view(["POST"])

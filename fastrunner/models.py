@@ -22,11 +22,14 @@ class Project(BaseTable):
 
     class Meta:
         verbose_name = "项目信息"
-        db_table = "Project"
+        verbose_name_plural = verbose_name
 
     name = models.CharField("项目名称", unique=True, null=False, max_length=100)
     desc = models.CharField("简要介绍", max_length=100, null=False)
     responsible = models.CharField("创建人", max_length=20, null=False)
+
+    def __str__(self):
+        return self.name
 
 
 class Config(BaseTable):
@@ -35,13 +38,16 @@ class Config(BaseTable):
     """
 
     class Meta:
-        verbose_name = "环境信息"
-        db_table = "Config"
+        verbose_name = "配置信息"
+        verbose_name_plural = verbose_name
 
     name = models.CharField("环境名称", null=False, max_length=100)
     body = models.TextField("主体信息", null=False)
-    base_url = models.CharField("请求地址", null=False, max_length=100)
+    base_url = models.CharField("请求地址", null=True, blank=True, max_length=100)
     project = models.ForeignKey(Project, on_delete=models.CASCADE)
+
+    def __str__(self):
+        return self.name
 
 
 class API(BaseTable):
@@ -51,7 +57,7 @@ class API(BaseTable):
 
     class Meta:
         verbose_name = "接口信息"
-        db_table = "API"
+        verbose_name_plural = verbose_name
 
     name = models.CharField("接口名称", null=False, max_length=100)
     body = models.TextField("主体信息", null=False)
@@ -59,6 +65,9 @@ class API(BaseTable):
     method = models.CharField("请求方式", null=False, max_length=10)
     project = models.ForeignKey(Project, on_delete=models.CASCADE)
     relation = models.IntegerField("节点id", null=False)
+
+    def __str__(self):
+        return self.name
 
 
 class Case(BaseTable):
@@ -68,7 +77,7 @@ class Case(BaseTable):
 
     class Meta:
         verbose_name = "用例信息"
-        db_table = "Case"
+        verbose_name_plural = verbose_name
 
     tag = (
         (1, "冒烟用例"),
@@ -81,6 +90,9 @@ class Case(BaseTable):
     length = models.IntegerField("API个数", null=False)
     tag = models.IntegerField("用例标签", choices=tag, default=2)
 
+    def __str__(self):
+        return self.name
+
 
 class CaseStep(BaseTable):
     """
@@ -89,7 +101,7 @@ class CaseStep(BaseTable):
 
     class Meta:
         verbose_name = "用例信息 Step"
-        db_table = "CaseStep"
+        verbose_name_plural = verbose_name
 
     name = models.CharField("api名称", null=False, max_length=100)
     body = models.TextField("主体信息", null=False)
@@ -99,6 +111,9 @@ class CaseStep(BaseTable):
     step = models.IntegerField("api顺序", null=False)
     apiId = models.IntegerField('所属api_id', null=False, default=0)
 
+    def __str__(self):
+        return self.name
+
 
 class HostIP(BaseTable):
     """
@@ -107,12 +122,15 @@ class HostIP(BaseTable):
 
     class Meta:
         verbose_name = "HOST配置"
-        db_table = "HostIP"
+        verbose_name_plural = verbose_name
 
     name = models.CharField(null=False, max_length=20, unique=True, help_text="环境名称")
     hostInfo = models.TextField(null=False, help_text="环境信息详情")
     project = models.ForeignKey(Project, on_delete=models.CASCADE, help_text="所属项目")
     base_url = models.URLField(null=True, blank=True, help_text="环境根地址")
+
+    def __str__(self):
+        return self.name
 
 
 class Variables(BaseTable):
@@ -122,11 +140,14 @@ class Variables(BaseTable):
 
     class Meta:
         verbose_name = "全局变量"
-        db_table = "Variables"
+        verbose_name_plural = verbose_name
 
     key = models.CharField(null=False, max_length=100)
     value = models.CharField(null=False, max_length=1024)
     project = models.ForeignKey(Project, on_delete=models.CASCADE)
+
+    def __str__(self):
+        return self.key
 
 
 class Report(BaseTable):
@@ -141,12 +162,15 @@ class Report(BaseTable):
 
     class Meta:
         verbose_name = "测试报告"
-        db_table = "Report"
+        verbose_name_plural = verbose_name
 
     name = models.CharField("报告名称", null=False, max_length=100)
     type = models.IntegerField("报告类型", choices=report_type)
     summary = models.TextField("主体信息", null=False)
     project = models.ForeignKey(Project, on_delete=models.CASCADE)
+
+    def __str__(self):
+        return self.name
 
 
 class Relation(models.Model):
@@ -156,7 +180,7 @@ class Relation(models.Model):
 
     class Meta:
         verbose_name = "树形结构关系"
-        db_table = "Relation"
+        verbose_name_plural = verbose_name
 
     project = models.ForeignKey(Project, on_delete=models.CASCADE)
     tree = models.TextField("结构主题", null=False, default=[])
@@ -169,12 +193,15 @@ class ModelWithFileField(BaseTable):
     """
     class Meta:
         verbose_name = "文件信息表"
-        db_table = "FileInfo"
+        verbose_name_plural = verbose_name
         unique_together = [['project', 'name']]
 
     project = models.ForeignKey(Project, on_delete=models.CASCADE)
     name = models.CharField(max_length=50)
     file = models.FileField(upload_to='testdatas', unique=True, null=True, blank=True)
+
+    def __str__(self):
+        return self.name
 
 
 class Pycode(BaseTable):
@@ -184,10 +211,13 @@ class Pycode(BaseTable):
 
     class Meta:
         verbose_name = "驱动文件库"
-        db_table = "pycodeFile"
+        verbose_name_plural = verbose_name
         unique_together = [['project', 'name']]
 
     code = models.TextField("python代码", default="# _*_ coding:utf-8 _*_", null=False)
     project = models.ForeignKey(Project, on_delete=models.CASCADE)
     name = models.CharField(max_length=30, null=False)
     desc = models.CharField("简要介绍", max_length=100, null=True, blank=True)
+
+    def __str__(self):
+        return self.name

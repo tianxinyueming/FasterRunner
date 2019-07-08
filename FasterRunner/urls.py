@@ -19,7 +19,7 @@ from django.conf.urls import url
 from django.views.static import serve
 from rest_framework.authtoken import views
 from rest_framework_jwt.views import obtain_jwt_token
-
+import xadmin
 from FasterRunner.settings import MEDIA_ROOT
 
 urlpatterns = [
@@ -29,6 +29,7 @@ urlpatterns = [
     url(r'^api-token-auth/', views.obtain_auth_token),
     # jwt的认证接口
     url(r'^api/user/login/', obtain_jwt_token),
+    url(r'^xadmin/', xadmin.site.urls),
 
     path('api/fastrunner/', include('fastrunner.urls'))
 ]

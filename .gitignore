@@ -2,7 +2,7 @@
 
 # myconfig
 myconfig.conf
-logs
+logs/*.log
 .idea
 fastrunner/migrations/*initial.py
 fastrunner/migrations/*_auto_*.py

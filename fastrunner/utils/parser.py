@@ -407,7 +407,7 @@ def get_type(content):
         if key in ["list", "dict"]:
             content = json.dumps(content, ensure_ascii=False)
         else:
-            content = str(content)
+            content = content
         return var_type[key], content
     except:
         return 1, 'null'

@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/2.1/ref/settings/
 """
 
 import os
+import sys
 import djcelery
 import configparser
 import datetime
@@ -29,10 +30,10 @@ database_host = cf.get(env+'-config', 'HOST')
 database_port = cf.getint(env+'-config', 'PORT')
 invalid_time = cf.getint(env+'-config', 'INVALID_TIME')
 log_level = cf.getboolean(env+'-config', 'DEBUG')
-# media_root = cf.get(env+'-config', 'MEDIA_ROOT')
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.join(BASE_DIR, 'extra_apps'))
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/2.1/howto/deployment/checklist/
@@ -62,7 +63,11 @@ INSTALLED_APPS = [
     'rest_framework',
     'corsheaders',
     'djcelery',
-    'rest_framework.authtoken'
+    'rest_framework.authtoken',
+    'xadmin',
+    'crispy_forms',
+    'DjangoUeditor',
+    'reversion'
 ]
 
 MIDDLEWARE = [
@@ -145,7 +150,7 @@ USE_I18N = True
 
 USE_L10N = True
 
-USE_TZ = False # 默认是Ture，时间是utc时间，由于要用本地时间，所用手动修改为false
+USE_TZ = False  # 默认是Ture，时间是utc时间，由于要用本地时间，所用手动修改为false
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/2.1/howto/static-files/
@@ -163,10 +168,6 @@ REST_FRAMEWORK = {
         'rest_framework.authentication.SessionAuthentication',
         'rest_framework.authentication.BasicAuthentication',
     ),
-    # 'DEFAULT_AUTHENTICATION_CLASSES': (
-    #     'rest_framework.authentication.BasicAuthentication',
-    #     'rest_framework.authentication.SessionAuthentication',
-    # ),
     'UNAUTHENTICATED_USER': None,
     'UNAUTHENTICATED_TOKEN': None,
     # json form 渲染
@@ -212,16 +213,19 @@ CORS_ALLOW_HEADERS = (
 djcelery.setup_loader()
 CELERY_ENABLE_UTC = True
 CELERY_TIMEZONE = 'Asia/Shanghai'
-BROKER_URL = 'amqp://username:password@IP:5672//'
+BROKER_URL = "amqp://guest:guest@127.0.0.1:5672//"
 CELERYBEAT_SCHEDULER = 'djcelery.schedulers.DatabaseScheduler'
 CELERY_RESULT_BACKEND = 'djcelery.backends.database:DatabaseBackend'
+# 序列化任务有效负载的默认序列化程序
 CELERY_ACCEPT_CONTENT = ['application/json']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
 
 CELERY_TASK_RESULT_EXPIRES = 7200
-CELERYD_CONCURRENCY = 1 if DEBUG else 5
-CELERYD_MAX_TASKS_PER_CHILD = 40
+CELERYD_CONCURRENCY = 1 if DEBUG else 4  # 并发的worker数量
+CELERYD_MAX_TASKS_PER_CHILD = 40  # 每个worker最多执行40次任务被销毁，防止内存泄漏
+CELERY_FORCE_EXECV = True  # 有些情况可以防止死锁
+CELERY_TASK_TIME_LIMIT = 3*60*60  # 单个任务最大运行时间
 
 LOGGING = {
     'version': 1,

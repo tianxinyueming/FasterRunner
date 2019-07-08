@@ -2,11 +2,11 @@ import os
 
 from django.core.exceptions import ObjectDoesNotExist
 from django.utils.decorators import method_decorator
-from rest_framework.views import APIView
 from rest_framework.viewsets import GenericViewSet, ModelViewSet
 from rest_framework import mixins
 from rest_framework import status
 from rest_framework.response import Response
+from rest_framework.permissions import DjangoModelPermissions
 
 from fastrunner import models, serializers
 from FasterRunner import pagination
@@ -25,6 +25,7 @@ class ProjectView(ModelViewSet):
     queryset = models.Project.objects.all().order_by('-update_time')
     serializer_class = serializers.ProjectSerializer
     pagination_class = pagination.MyCursorPagination
+    permission_classes = (DjangoModelPermissions,)
 
     @method_decorator(request_log(level='INFO'))
     def single(self, request, **kwargs):
@@ -65,10 +66,16 @@ class DashboardView(GenericViewSet):
         return Response(prepare.get_project_detail(kwargs['pk']))
 
 
-class TreeView(APIView):
+class TreeView(GenericViewSet):
     """
     树形结构操作
     """
+    permission_classes = (DjangoModelPermissions,)
+
+    def get_queryset(self):
+        project_id = self.kwargs.get('pk')
+        queryset = models.Relation.objects.filter(project__id=project_id).order_by('-update_time')
+        return queryset
 
     @method_decorator(request_log(level='INFO'))
     def get(self, request, **kwargs):
@@ -132,6 +139,7 @@ class FileView(ModelViewSet):
     """
     serializer_class = serializers.FileSerializer
     pagination_class = pagination.MyPageNumberPagination
+    permission_classes = (DjangoModelPermissions,)
 
     def get_queryset(self):
         if self.action == 'create':
@@ -214,6 +222,7 @@ class PycodeView(ModelViewSet):
     """
     serializer_class = serializers.PycodeSerializer
     pagination_class = pagination.MyPageNumberPagination
+    permission_classes = (DjangoModelPermissions,)
 
     def get_queryset(self):
         project = self.request.query_params["project"]

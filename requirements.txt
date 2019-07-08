@@ -10,4 +10,10 @@ pillow
 djangorestframework-jwt
 xlrd
 xlsxwriter
+django-crispy-forms
+django-formtools
+django-reversion
+django-import-export
+httplib2
+future
 uwsgi == 2.0.18

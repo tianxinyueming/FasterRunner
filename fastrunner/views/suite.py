@@ -1,9 +1,8 @@
 from django.utils.decorators import method_decorator
-from rest_framework.views import APIView
-from rest_framework.viewsets import GenericViewSet, ModelViewSet
-from rest_framework import mixins
+from rest_framework.viewsets import ModelViewSet
 from rest_framework import status
 from rest_framework.response import Response
+from rest_framework.permissions import DjangoModelPermissions
 
 from fastrunner import models, serializers
 from FasterRunner import pagination
@@ -25,9 +24,16 @@ class TestCaseView(ModelViewSet):
                 name: str
             }]
         }
+    create: copy{
+        id: 36
+        name: "d"
+        project: 6
+        relation: 1
+        }
     """
     serializer_class = serializers.CaseSerializer
     pagination_class = pagination.MyPageNumberPagination
+    permission_classes = (DjangoModelPermissions,)
 
     def get_queryset(self):
         project = self.request.query_params["project"]
@@ -43,14 +49,33 @@ class TestCaseView(ModelViewSet):
 
     @method_decorator(request_log(level='INFO'))
     def create(self, request, *args, **kwargs):
-        body = request.data.pop('body')
+        if 'id' in request.data.keys():
+            pk = request.data['id']
+            name = request.data['name']
+            case_info = models.Case.objects.get(id=pk)
+            request_data = {
+                "name": name,
+                "relation": case_info.relation,
+                "length": case_info.length,
+                "tag": case_info.tag,
+                "project": case_info.project_id
+            }
+            serializer = self.get_serializer(data=request_data)
+            serializer.is_valid(raise_exception=True)
+            self.perform_create(serializer)
+            case_step = models.CaseStep.objects.filter(case__id=pk)
+            for step in case_step:
+                step.id = None
+                step.case_id = serializer.data["id"]
+                step.save()
+        else:
+            body = request.data.pop('body')
+            serializer = self.get_serializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+            self.perform_create(serializer)
 
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        self.perform_create(serializer)
-
-        case = models.Case.objects.filter(**request.data).first()
-        prepare.generate_casestep(body, case)
+            case = models.Case.objects.filter(**request.data).first()
+            prepare.generate_casestep(body, case)
 
         headers = self.get_success_headers(serializer.data)
         return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
@@ -89,65 +114,15 @@ class TestCaseView(ModelViewSet):
                 self.perform_destroy(instance)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
-
-class TestCaseCopyView(GenericViewSet, mixins.CreateModelMixin):
-    """
-    create: 复制case
-        {
-            name: test name
-            relation: int
-            project: int
-            id: testcase id
-        }
-    """
-    serializer_class = serializers.CaseSerializer
-
     @method_decorator(request_log(level='INFO'))
-    def create(self, request, *args, **kwargs):
-        pk = request.data['id']
-        name = request.data['name']
-
-        case_info = models.Case.objects.get(id=pk)
-        request_data = {
-            "name": name,
-            "relation": case_info.relation,
-            "length": case_info.length,
-            "tag": case_info.tag,
-            "project": case_info.project_id
-        }
-
-        serializer = self.get_serializer(data=request_data)
-        serializer.is_valid(raise_exception=True)
-        self.perform_create(serializer)
-
-        case_step = models.CaseStep.objects.filter(case__id=pk)
-        for step in case_step:
-            step.id = None
-            step.case_id = serializer.data["id"]
-            step.save()
-
-        headers = self.get_success_headers(serializer.data)
-        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
-
-
-class CaseStepView(APIView):
-    """
-    测试用例step操作视图
-    """
-
-    @method_decorator(request_log(level='INFO'))
-    def get(self, request, **kwargs):
-        """
-        返回用例集信息
-        """
-        pk = kwargs['pk']
-
-        queryset = models.CaseStep.objects.filter(case__id=pk).order_by('step')
-
-        serializer = serializers.CaseStepSerializer(instance=queryset, many=True)
-
+    def retrieve(self, request, *args, **kwargs):
+        instance = self.get_object()
+        serializer = self.get_serializer(instance)
+        queryset = models.CaseStep.objects.filter(case__id=kwargs['pk']).order_by('step')
+        casestep_serializer = serializers.CaseStepSerializer(queryset, many=True)
         resp = {
-            "case": serializers.CaseSerializer(instance=models.Case.objects.get(id=pk), many=False).data,
-            "step": serializer.data
+            "case": serializer.data,
+            "step": casestep_serializer.data
         }
         return Response(resp)
+

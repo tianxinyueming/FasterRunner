@@ -15,10 +15,11 @@
 例如可以只将登录所需信息放在域名管理里。
 - 重构了用户认证，使用了drf-jwt应用，移除了注册功能，直接从后台分配账号（出于安全考虑）
 - api/testcase运行时可以指定excel测试数据，在后台运行时会生成系统环境变量“excelName”/“excelsheet”，在驱动代码里可以os.environ["excelsheet"]方式获取，并进一步做自己的处理
-- 增加了测试简易的excel报告，提取了简要的报错信息，便于大批量运行测试用例时查看
+- 增加了简易的excel报告，提取了简要的报错信息，便于大批量运行测试用例时查看
 - 抓取httprunner错误返回到前端
 - 配置管理里新加了output参数，output将写入报告里
 - 更新了api与testcase的关系。沿用httprunner作者的思想，测试用例中的request/headers/method/url内容直接调用相应api中的内容；并且更新api的request/header/method/url时，会自动改变测试用例中的request/headers/method/url
+- 单个testcase执行时也可以异步
 ```
 
 ## Docker 部署 uwsgi+nginx模式
@@ -52,15 +53,8 @@
 6. python manage.py runserver 开发环境启动服务
 ``` 
 
-##### windows安装uwsgi
-1. https://pypi.org/project/uWSGI/#files 下载uwsgi文件
-2. 在对应python版本的Lib\site-packages下解压
-3. 找到uwsgiconfig.py配置文件然后打开
-4. 导入模块 import platform，将全部os.uname替换为 platform.uname
-
 ##### 其他注意点
-- Windows环境安装mysqlclient可能需要先安装Microsoft Visual c++ 14.0
-- Settings.py DEBUG=True默认生成sqlite数据库，DEBUG=False使用mysql数据库配置
+- Windows环境安装mysqlclient可能需要先安装Microsoft Visual c++ 14.0,然后在 https://www.lfd.uci.edu/~gohlke/pythonlibs/ 此链接下找自己需要的windows安装包
 - 如果提示：No module named 'djcelery' ，再执行一遍 pip install django-celery==3.2.2
 - 如果提示： ValueError: Unable to configure handler 'default': [Errno 2] No such file or directory: 'mypath\\FasterRunner\\logs\\debug.log' , 手动创建FasterRunner\\logs\\debug.log
-
+- 下载rabbmitMQ所需的erlang时，在官网下载很慢，可以访问 https://www.erlang-solutions.com/resources/download.html，windows配置参考：https://blog.csdn.net/qq_31634461/article/details/79377256

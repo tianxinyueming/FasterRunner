@@ -25,14 +25,12 @@ router = DefaultRouter()
 router.register(r'project', project.ProjectView, base_name='project')
 # 配置host_ip
 router.register(r'host_ip', config.HostIPView, base_name='host_ip')
-router.register(r'copyhost', config.HostIPCopyView, base_name="copyhost")
 # 文件管理
 router.register(r'file', project.FileView, base_name='file')
 # dashboard
 # router.register(r'dashboard', project.DashboardView, base_name='dashboard')
 # 测试用例
 router.register(r'testcase', suite.TestCaseView, base_name='testcase')
-router.register(r'testcasecopy', suite.TestCaseCopyView, base_name='testcasecopy')
 # 驱动代码
 router.register(r'pycode', project.PycodeView, base_name='pycode')
 router.register(r'runpycode', project.PycodeRunView, base_name="runpycode")
@@ -59,7 +57,10 @@ urlpatterns = [
     })),
 
     # 二叉树接口地址
-    path('tree/<int:pk>/', project.TreeView.as_view()),
+    path('tree/<int:pk>/', project.TreeView.as_view({
+        'get':'get',
+        'patch': 'patch'
+    })),
 
     # api接口模板地址
     path('api/', api.APITemplateView.as_view({
@@ -73,8 +74,6 @@ urlpatterns = [
         "patch": "update",
         "post": "copy"
     })),
-
-    path('teststep/<int:pk>/', suite.CaseStepView.as_view()),
 
     # config接口地址
     path('config/', config.ConfigView.as_view({
@@ -107,8 +106,6 @@ urlpatterns = [
     path('run_api/', run.run_api),
 
     # run testsuite
-    path('run_testsuite/', run.run_testsuite),
-    path('run_test/', run.run_test),
     path('run_testsuite_pk/<int:pk>/', run.run_testsuite_pk),
     path('run_suite_tree/', run.run_suite_tree),
     path('automation_test/', run.automation_test),

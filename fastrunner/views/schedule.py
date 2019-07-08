@@ -2,6 +2,8 @@ from django.utils.decorators import method_decorator
 from rest_framework.viewsets import GenericViewSet
 from djcelery import models
 from rest_framework.response import Response
+from rest_framework.permissions import DjangoModelPermissions
+
 from FasterRunner import pagination
 from fastrunner import serializers
 from fastrunner.utils import response
@@ -16,6 +18,7 @@ class ScheduleView(GenericViewSet):
     queryset = models.PeriodicTask.objects
     serializer_class = serializers.PeriodicTaskSerializer
     pagination_class = pagination.MyPageNumberPagination
+    permission_classes = (DjangoModelPermissions,)
 
     @method_decorator(request_log(level='DEBUG'))
     def list(self, request):

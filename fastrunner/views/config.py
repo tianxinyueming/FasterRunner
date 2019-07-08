@@ -5,9 +5,11 @@ from rest_framework.viewsets import GenericViewSet
 from rest_framework import viewsets
 from rest_framework import mixins
 from rest_framework import status
+from rest_framework.permissions import DjangoModelPermissions
+from rest_framework.response import Response
+
 from fastrunner import models, serializers
 from FasterRunner import pagination
-from rest_framework.response import Response
 from fastrunner.utils import response
 from fastrunner.utils.decorator import request_log
 from fastrunner.utils.parser import Format
@@ -16,6 +18,7 @@ from fastrunner.utils.parser import Format
 class ConfigView(GenericViewSet):
     serializer_class = serializers.ConfigSerializer
     queryset = models.Config.objects
+    permission_classes = (DjangoModelPermissions,)
 
     @method_decorator(request_log(level='DEBUG'))
     def list(self, request):
@@ -174,6 +177,7 @@ class ConfigView(GenericViewSet):
 class VariablesView(GenericViewSet):
     serializer_class = serializers.VariablesSerializer
     queryset = models.Variables.objects
+    permission_classes = (DjangoModelPermissions,)
 
     @method_decorator(request_log(level='DEBUG'))
     def list(self, request):
@@ -266,8 +270,10 @@ class VariablesView(GenericViewSet):
 class HostIPView(viewsets.ModelViewSet):
     """
     域名管理视图
+    create: 传id时认为是在复制，不传时在新建
     """
     pagination_class = pagination.MyPageNumberPagination
+    permission_classes = (DjangoModelPermissions,)
 
     def get_queryset(self):
         return models.HostIP.objects.filter(project__id=self.request.query_params['project']).order_by('-update_time')
@@ -278,6 +284,30 @@ class HostIPView(viewsets.ModelViewSet):
         else:
             return serializers.HostIPSerializerList
 
+    @method_decorator(request_log(level='INFO'))
+    def create(self, request, *args, **kwargs):
+        if 'id' in request.data.keys():
+            pk = request.data['id']
+            name = request.data['name']
+
+            host_info = self.get_queryset().get(id=pk)
+            # models.HostIP.objects.get(id=pk)
+            request_data = {
+                "name": name,
+                "hostInfo": json.loads(host_info.hostInfo),
+                "project": host_info.project_id,
+                "base_url": host_info.base_url
+            }
+        else:
+            request_data = request.data
+        serializer = self.get_serializer(data=request_data)
+
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        headers = self.get_success_headers(serializer.data)
+        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+
+    @method_decorator(request_log(level='INFO'))
     def destroy(self, request, *args, **kwargs):
         if kwargs.get('pk') and int(kwargs['pk']) != -1:
             instance = self.get_object()
@@ -288,34 +318,3 @@ class HostIPView(viewsets.ModelViewSet):
                 instance = self.get_object()
                 self.perform_destroy(instance)
         return Response(status=status.HTTP_204_NO_CONTENT)
-
-
-class HostIPCopyView(GenericViewSet, mixins.CreateModelMixin):
-    """
-    create: 复制hostIp
-        {
-            name: hostIp name
-            id: hostIp id
-        }
-    """
-    serializer_class = serializers.HostIPSerializerPost
-
-    @method_decorator(request_log(level='INFO'))
-    def create(self, request, *args, **kwargs):
-        pk = request.data['id']
-        name = request.data['name']
-
-        host_info = models.HostIP.objects.get(id=pk)
-        request_data = {
-            "name": name,
-            "hostInfo": json.loads(host_info.hostInfo),
-            "project": host_info.project_id,
-            "base_url": host_info.base_url
-        }
-
-        serializer = self.get_serializer(data=request_data)
-        serializer.is_valid(raise_exception=True)
-        self.perform_create(serializer)
-
-        headers = self.get_success_headers(serializer.data)
-        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)

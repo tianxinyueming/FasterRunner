@@ -1,9 +1,9 @@
-
-from celery import shared_task
+# _*_ coding: utf-8 _*_
+from celery import shared_task  # 可以无需任何具体的应用程序实例创建任务
 from django.core.exceptions import ObjectDoesNotExist
+
 from fastrunner import models
 from fastrunner.utils.loader import save_summary, debug_suite, debug_api
-
 
 
 @shared_task
@@ -15,12 +15,19 @@ def async_debug_api(api, project, name, config=None):
 
 
 @shared_task
+def async_debug_test(test_case, project, name, report_name, config, test_data):
+    """异步执行testcase
+    """
+    summary = debug_api(test_case, project, name=name, config=config, save=False, test_data=test_data)
+    save_summary(report_name, summary, project)
+
+
+@shared_task
 def async_debug_suite(suite, project, obj, report, config):
     """异步执行suite
     """
     summary = debug_suite(suite, project, obj, config=config, save=False)
     save_summary(report, summary, project)
-
 
 
 @shared_task

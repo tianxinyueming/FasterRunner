@@ -1,12 +1,14 @@
+from django.db import DataError
 from django.core.exceptions import ObjectDoesNotExist
 from django.utils.decorators import method_decorator
 from rest_framework.viewsets import GenericViewSet
-from fastrunner import models, serializers
 from rest_framework.response import Response
+from rest_framework.permissions import DjangoModelPermissions
+
+from fastrunner import models, serializers
 from fastrunner.utils import response
 from fastrunner.utils.decorator import request_log
 from fastrunner.utils.parser import Format, Parse
-from django.db import DataError
 
 
 class APITemplateView(GenericViewSet):
@@ -15,6 +17,7 @@ class APITemplateView(GenericViewSet):
     """
     serializer_class = serializers.APISerializer
     queryset = models.API.objects
+    permission_classes = (DjangoModelPermissions,)
 
     @method_decorator(request_log(level='DEBUG'))
     def list(self, request):

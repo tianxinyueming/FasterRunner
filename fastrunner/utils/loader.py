@@ -233,7 +233,7 @@ def debug_suite(suite, project, obj, config, save=True):
         test_sets.append(testcases)
 
     kwargs = {
-        "failfast": False
+        "failfast": True
     }
     runner = HttpRunner(**kwargs)
     runner.run(test_sets)
@@ -245,7 +245,7 @@ def debug_suite(suite, project, obj, config, save=True):
     return summary
 
 
-def debug_api(api, project, name=None, config=None, save=False, test_data=None):
+def debug_api(api, project, name=None, config=None, save=False, test_data=None, report_name=''):
     """debug api
         api :dict or list
         project: int
@@ -266,12 +266,12 @@ def debug_api(api, project, name=None, config=None, save=False, test_data=None):
     os.chdir(os.path.dirname(debugtalk_path))
     testcase_list = [parse_tests(api, debugtalk_content, project, name=name, config=config)]
 
-    failFast = False
+    fail_fast = False
     if config and 'failFast' in config.keys():
-        failFast = True if (config["failFast"] == 'true' or config["failFast"] is True) else False
+        fail_fast = True if (config["failFast"] == 'true' or config["failFast"] is True) else False
 
     kwargs = {
-        "failfast": failFast
+        "failfast": fail_fast
     }
     if test_data is not None:
         os.environ["excelName"] = test_data[0]
@@ -281,7 +281,7 @@ def debug_api(api, project, name=None, config=None, save=False, test_data=None):
 
     summary = parse_summary(runner.summary)
     if save:
-        save_summary("", summary, project, type=1)
+        save_summary(report_name, summary, project, type=1)
     os.chdir(BASE_DIR)
     shutil.rmtree(os.path.dirname(debugtalk_path))
     return summary
