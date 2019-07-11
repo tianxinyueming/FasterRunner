@@ -34,6 +34,8 @@ router.register(r'testcase', suite.TestCaseView, base_name='testcase')
 # 驱动代码
 router.register(r'pycode', project.PycodeView, base_name='pycode')
 router.register(r'runpycode', project.PycodeRunView, base_name="runpycode")
+# 测试报告视图
+router.register(r'reports', report.ReportView, base_name='reports')
 
 urlpatterns = [
     url(r'^', include(router.urls)),
@@ -108,15 +110,5 @@ urlpatterns = [
     # run testsuite
     path('run_testsuite_pk/<int:pk>/', run.run_testsuite_pk),
     path('run_suite_tree/', run.run_suite_tree),
-    path('automation_test/', run.automation_test),
-
-    # 报告地址
-    path('reports/', report.ReportView.as_view({
-        "get": "list"
-    })),
-
-    path('reports/<int:pk>/', report.ReportView.as_view({
-        "delete": "delete",
-        "get": "look"
-    }))
+    path('automation_test/', run.automation_test)
 ]

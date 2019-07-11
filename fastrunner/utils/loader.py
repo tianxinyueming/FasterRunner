@@ -351,7 +351,6 @@ def save_summary(name, summary, project, type=2):
         return
     if name is "":
         name = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-
     models.Report.objects.create(**{
         "project": models.Project.objects.get(id=project),
         "name": name,

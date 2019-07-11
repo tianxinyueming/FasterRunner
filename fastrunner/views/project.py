@@ -158,9 +158,8 @@ class FileView(ModelViewSet):
             headers = self.get_success_headers(serializer.data)
             return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
         else:
-            pk = self.get_queryset()[0].id
-            # instance = self.get_object()
-            instance = models.ModelWithFileField.objects.get(pk=pk)
+            self.kwargs['pk'] = self.get_queryset()[0].id
+            instance = self.get_object()
 
             partial = kwargs.pop('partial', False)
             serializer = self.get_serializer(instance, data=request.data, partial=partial)

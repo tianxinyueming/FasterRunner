@@ -1,78 +1,43 @@
 import json
 
-from django.core.exceptions import ObjectDoesNotExist
 from django.shortcuts import render_to_response
-from django.utils.decorators import method_decorator
 from rest_framework.response import Response
-from rest_framework.viewsets import GenericViewSet
+from rest_framework.viewsets import GenericViewSet, mixins
 from rest_framework.permissions import DjangoModelPermissions
+from rest_framework import status
 
 from FasterRunner import pagination
 from fastrunner import models, serializers
-from fastrunner.utils import response
-from fastrunner.utils.decorator import request_log
 
 
-class ReportView(GenericViewSet):
+class ReportView(GenericViewSet, mixins.RetrieveModelMixin, mixins.ListModelMixin, mixins.DestroyModelMixin):
     """
-    报告视图
+    测试报告视图
     """
-    queryset = models.Report.objects
     serializer_class = serializers.ReportSerializer
     pagination_class = pagination.MyPageNumberPagination
     permission_classes = (DjangoModelPermissions,)
 
-    @method_decorator(request_log(level='DEBUG'))
-    def list(self, request):
-        """报告列表
-        """
+    def get_queryset(self):
+        project = self.request.query_params['project']
+        if self.action == 'list':
+            search = self.request.query_params["search"]
+            return models.Report.objects.filter(project__id=project, name__contains=search).order_by('-update_time')
+        return models.Report.objects.filter(project__id=project).order_by('-update_time')
 
-        project = request.query_params['project']
-        search = request.query_params["search"]
+    def destroy(self, request, *args, **kwargs):
+        if kwargs.get('pk') and int(kwargs['pk']) != -1:
+            instance = self.get_object()
+            self.perform_destroy(instance)
+        elif request.data:
+            for content in request.data:
+                self.kwargs['pk'] = content['id']
+                instance = self.get_object()
+                self.perform_destroy(instance)
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
-        queryset = self.get_queryset().filter(project__id=project).order_by('-update_time')
-
-        if search != '':
-            queryset = queryset.filter(name__contains=search)
-
-        page_report = self.paginate_queryset(queryset)
-        serializer = self.get_serializer(page_report, many=True)
-        return self.get_paginated_response(serializer.data)
-
-    @method_decorator(request_log(level='INFO'))
-    def delete(self, request, **kwargs):
-        """删除报告
-        """
-        """
-           删除一个报告pk
-           删除多个
-           [{
-               id:int
-           }]
-        """
-        try:
-            if kwargs.get('pk'):  # 单个删除
-                models.Report.objects.get(id=kwargs['pk']).delete()
-            else:
-                for content in request.data:
-                    models.Report.objects.get(id=content['id']).delete()
-
-        except ObjectDoesNotExist:
-            return Response(response.REPORT_NOT_EXISTS)
-
-        return Response(response.REPORT_DEL_SUCCESS)
-
-    @method_decorator(request_log(level='INFO'))
-    def look(self, request, **kwargs):
-        """查看报告
-        """
-        pk = kwargs["pk"]
-        report = models.Report.objects.get(id=pk)
-        summary = json.loads(report.summary, encoding="utf-8")
-        summary["html_report_name"] = report.name
+    def retrieve(self, request, *args, **kwargs):
+        instance = self.get_object()
+        summary = json.loads(instance.summary, encoding="utf-8")
+        summary["html_report_name"] = instance.name
         return render_to_response('report_template.html', summary)
-
-    def download(self, request, **kwargs):
-        """下载报告
-        """
-        pass

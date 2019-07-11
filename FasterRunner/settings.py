@@ -223,7 +223,7 @@ CELERY_RESULT_SERIALIZER = 'json'
 
 CELERY_TASK_RESULT_EXPIRES = 7200
 CELERYD_CONCURRENCY = 1 if DEBUG else 4  # 并发的worker数量
-CELERYD_MAX_TASKS_PER_CHILD = 40  # 每个worker最多执行40次任务被销毁，防止内存泄漏
+CELERYD_MAX_TASKS_PER_CHILD = 100  # 每个worker最多执行100次任务被销毁，防止内存泄漏
 CELERY_FORCE_EXECV = True  # 有些情况可以防止死锁
 CELERY_TASK_TIME_LIMIT = 3*60*60  # 单个任务最大运行时间
 
@@ -247,7 +247,7 @@ LOGGING = {
             'level': 'DEBUG',
             'class': 'logging.handlers.RotatingFileHandler',
             'filename': os.path.join(BASE_DIR, 'logs/debug.log'),
-            'maxBytes': 1024 * 1024 * 50,
+            'maxBytes': 1073741824,
             'backupCount': 5,
             'formatter': 'standard',
         },
@@ -260,7 +260,7 @@ LOGGING = {
             'level': 'INFO',
             'class': 'logging.handlers.RotatingFileHandler',
             'filename': os.path.join(BASE_DIR, 'logs/run.log'),
-            'maxBytes': 1024 * 1024 * 50,
+            'maxBytes': 1073741824,
             'backupCount': 5,
             'formatter': 'standard',
         },
@@ -268,7 +268,7 @@ LOGGING = {
             'level': 'INFO',
             'class': 'logging.handlers.RotatingFileHandler',
             'filename': os.path.join(BASE_DIR, 'logs/run.log'),
-            'maxBytes': 1024 * 1024 * 100,
+            'maxBytes': 1073741824,
             'backupCount': 5,
             'formatter': 'standard',
         },

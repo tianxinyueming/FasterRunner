@@ -3,6 +3,7 @@ import xadmin
 from xadmin import views
 
 from .models import Project, Config, API, Case, CaseStep, HostIP, Variables, Report, ModelWithFileField, Pycode
+from djcelery.models import TaskState, WorkerState, PeriodicTask, IntervalSchedule, CrontabSchedule
 
 
 class BaseSetting(object):
@@ -85,9 +86,16 @@ class PycodeAdmin(object):
     ordering = ['-update_time']
 
 
+# 全局配置
 xadmin.site.register(views.BaseAdminView, BaseSetting)
 xadmin.site.register(views.CommAdminView, GlobalSettings)
-
+# djcelery
+xadmin.site.register(IntervalSchedule)  # 存储循环任务设置的时间
+xadmin.site.register(CrontabSchedule)  # 存储定时任务设置的时间
+xadmin.site.register(PeriodicTask)  # 存储任务
+xadmin.site.register(TaskState)  # 存储任务执行状态
+xadmin.site.register(WorkerState)  # 存储执行任务的worker
+# 自己的表
 xadmin.site.register(Project, ProjectAdmin)
 xadmin.site.register(Config, ConfigAdmin)
 xadmin.site.register(API, APIAdmin)

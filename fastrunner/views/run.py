@@ -1,6 +1,5 @@
 import json
 import logging
-import traceback
 
 from django.core.exceptions import ObjectDoesNotExist
 from rest_framework.decorators import api_view, authentication_classes
@@ -386,7 +385,7 @@ def automation_test(request):
                 "project": plan_sub.project.id,
                 "tag": plan_sub.tag
             }
-            tasks.async_automation_suite.delay(test_sets, tags, suite, request.data, config_list)
+            tasks.schedule_debug_suite.delay(test_sets, tags, suite, request.data, config_list)
             break
 
     return Response({

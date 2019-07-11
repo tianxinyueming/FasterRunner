@@ -97,26 +97,21 @@ class ReportSerializer(serializers.ModelSerializer):
     报告信息序列化
     """
     type = serializers.CharField(source="get_type_display")
-    time = serializers.SerializerMethodField()
-    stat = serializers.SerializerMethodField()
-    platform = serializers.SerializerMethodField()
-    success = serializers.SerializerMethodField()
+    summary = serializers.SerializerMethodField()
 
     class Meta:
         model = models.Report
-        fields = ["id", "name", "type", "time", "stat", "platform", "success"]
+        fields = ["id", "name", "type", "summary"]
 
-    def get_time(self, obj):
-        return json.loads(obj.summary)["time"]
-
-    def get_stat(self, obj):
-        return json.loads(obj.summary)["stat"]
-
-    def get_platform(self, obj):
-        return json.loads(obj.summary)["platform"]
-
-    def get_success(self, obj):
-        return json.loads(obj.summary)["success"]
+    def get_summary(self, obj):
+        report_summary = json.loads(obj.summary)
+        summary = {
+            "time": report_summary["time"],
+            "platform": report_summary["platform"],
+            "stat": report_summary["stat"],
+            "success": report_summary["success"],
+        }
+        return summary
 
 
 class VariablesSerializer(serializers.ModelSerializer):

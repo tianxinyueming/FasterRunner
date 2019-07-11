@@ -59,7 +59,7 @@ def write_excel_log(summary):
             temp_out_keys.extend(testcases["in_out"]["out"].keys())
         out_keys = list(set(temp_out_keys))
         xinfo = WriteExcel(excel_report_path)
-        xinfo.log_init('测试用例', '测试报告名称', '用例状态', '报错接口', out_keys, 'traceback', '请求报文', '返回报文')
+        xinfo.log_init('cases', '测试报告名称', '用例状态', '报错接口', out_keys, 'traceback', '请求报文', '返回报文')
         xinfo.log_write('name', 'status', 'error_api', out_keys, 'traceback', 'request', 'response')
         for testcases in summary["details"]:
             if testcases["success"]:
