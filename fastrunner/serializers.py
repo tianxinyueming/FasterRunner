@@ -104,13 +104,7 @@ class ReportSerializer(serializers.ModelSerializer):
         fields = ["id", "name", "type", "summary"]
 
     def get_summary(self, obj):
-        report_summary = json.loads(obj.summary)
-        summary = {
-            "time": report_summary["time"],
-            "platform": report_summary["platform"],
-            "stat": report_summary["stat"],
-            "success": report_summary["success"],
-        }
+        summary = json.loads(obj.summary)
         return summary
 
 
@@ -159,18 +153,40 @@ class PeriodicTaskSerializer(serializers.ModelSerializer):
     """
     定时任务信列表序列化
     """
-    kwargs = serializers.SerializerMethodField()
-    args = serializers.SerializerMethodField()
+    kwargs = serializers.CharField(write_only=True)
+    args = serializers.CharField(write_only=True)
+    total_run_count = serializers.IntegerField(read_only=True)
+    summary_kwargs = serializers.SerializerMethodField()
+    summary_args = serializers.SerializerMethodField()
 
     class Meta:
         model = celery_models.PeriodicTask
-        fields = ['id', 'name', 'args', 'kwargs', 'enabled', 'date_changed', 'enabled', 'description']
+        fields = '__all__'
 
-    def get_kwargs(self, obj):
-        return json.loads(obj.kwargs)
+    def get_summary_kwargs(self, obj):
+        summary_kwargs = json.loads(obj.kwargs)
+        receiver = ""
+        mail_cc = ""
+        for _ in summary_kwargs["receiver"]:
+            receiver += _ + ';'
+        for _ in summary_kwargs["mail_cc"]:
+            mail_cc += _ + ';'
+        summary_kwargs["receiver"] = receiver
+        summary_kwargs["mail_cc"] = mail_cc
+        return summary_kwargs
 
-    def get_args(self, obj):
-        return json.loads(obj.args)
+    def get_summary_args(self,obj):
+        summary_args = json.loads(obj.args)
+        return summary_args
+
+
+class CrontabScheduleSerializer(serializers.ModelSerializer):
+    """
+    crontabschedule序列化
+    """
+    class Meta:
+        model = celery_models.CrontabSchedule
+        fields = '__all__'
 
 
 class FileSerializer(serializers.ModelSerializer):

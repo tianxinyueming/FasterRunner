@@ -105,7 +105,7 @@ class ConfigView(GenericViewSet):
         format.parse()
         del format.testcase["skipIf"]
 
-        if models.Config.objects.exclude(id=pk).filter(name=format.name).first():
+        if models.Config.objects.exclude(id=pk).filter(name=format.name, project=config.project).first():
             return Response(response.CONFIG_EXISTS)
 
         case_step = models.CaseStep.objects.filter(method="config", name=config.name)

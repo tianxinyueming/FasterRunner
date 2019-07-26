@@ -193,9 +193,9 @@ def load_debugtalk(project):
     """import debugtalk.py in sys.path and reload
         project: int
     """
+    tempfile_path = tempfile.mkdtemp(prefix='tempHttpRunner', dir=os.path.join(BASE_DIR, 'tempWorkDir'))
+    debugtalk_path = os.path.join(tempfile_path, 'debugtalk.py')
     try:
-        tempfile_path = tempfile.mkdtemp(prefix='tempHttpRunner', dir=os.path.join(BASE_DIR, 'tempWorkDir'))
-
         py_files = models.Pycode.objects.filter(project__id=project)
         for file in py_files:
             file_path = os.path.join(tempfile_path, file.name)
@@ -205,11 +205,11 @@ def load_debugtalk(project):
             testdata_path = os.path.join(tempfile_path, testdata.name)
             myfile_path = os.path.join(BASE_DIR, 'media', str(testdata.file))
             FileLoader.copy_file(myfile_path, testdata_path)
-        debugtalk_path = os.path.join(tempfile_path, 'debugtalk.py')
         debugtalk = FileLoader.load_python_module(os.path.dirname(debugtalk_path))
-
         return debugtalk, debugtalk_path
-    except Exception:
+    except Exception as e:
+        os.chdir(BASE_DIR)
+        shutil.rmtree(os.path.dirname(debugtalk_path))
         print(traceback.print_exc())
 
 
@@ -227,22 +227,26 @@ def debug_suite(suite, project, obj, config, save=True):
     debugtalk_content = debugtalk[0]
     debugtalk_path = debugtalk[1]
     os.chdir(os.path.dirname(debugtalk_path))
-    for index in range(len(suite)):
-        testcases = copy.deepcopy(
-            parse_tests(suite[index], debugtalk_content, project, name=obj[index]['name'], config=config[index]))
-        test_sets.append(testcases)
+    try:
+        for index in range(len(suite)):
+            testcases = copy.deepcopy(
+                parse_tests(suite[index], debugtalk_content, project, name=obj[index]['name'], config=config[index]))
+            test_sets.append(testcases)
 
-    kwargs = {
-        "failfast": True
-    }
-    runner = HttpRunner(**kwargs)
-    runner.run(test_sets)
-    summary = parse_summary(runner.summary)
-    if save:
-        save_summary("", summary, project, type=1)
-    os.chdir(BASE_DIR)
-    shutil.rmtree(os.path.dirname(debugtalk_path))
-    return summary
+        kwargs = {
+            "failfast": True
+        }
+        runner = HttpRunner(**kwargs)
+        runner.run(test_sets)
+        summary = parse_summary(runner.summary)
+        if save:
+            save_summary("", summary, project, type=1)
+        return summary
+    except Exception as e:
+        print(traceback.print_exc())
+    finally:
+        os.chdir(BASE_DIR)
+        shutil.rmtree(os.path.dirname(debugtalk_path))
 
 
 def debug_api(api, project, name=None, config=None, save=False, test_data=None, report_name=''):
@@ -264,27 +268,31 @@ def debug_api(api, project, name=None, config=None, save=False, test_data=None, 
     debugtalk_content = debugtalk[0]
     debugtalk_path = debugtalk[1]
     os.chdir(os.path.dirname(debugtalk_path))
-    testcase_list = [parse_tests(api, debugtalk_content, project, name=name, config=config)]
+    try:
+        testcase_list = [parse_tests(api, debugtalk_content, project, name=name, config=config)]
 
-    fail_fast = False
-    if config and 'failFast' in config.keys():
-        fail_fast = True if (config["failFast"] == 'true' or config["failFast"] is True) else False
+        fail_fast = False
+        if config and 'failFast' in config.keys():
+            fail_fast = True if (config["failFast"] == 'true' or config["failFast"] is True) else False
 
-    kwargs = {
-        "failfast": fail_fast
-    }
-    if test_data is not None:
-        os.environ["excelName"] = test_data[0]
-        os.environ["excelsheet"] = test_data[1]
-    runner = HttpRunner(**kwargs)
-    runner.run(testcase_list)
+        kwargs = {
+            "failfast": fail_fast
+        }
+        if test_data is not None:
+            os.environ["excelName"] = test_data[0]
+            os.environ["excelsheet"] = test_data[1]
+        runner = HttpRunner(**kwargs)
+        runner.run(testcase_list)
 
-    summary = parse_summary(runner.summary)
-    if save:
-        save_summary(report_name, summary, project, type=1)
-    os.chdir(BASE_DIR)
-    shutil.rmtree(os.path.dirname(debugtalk_path))
-    return summary
+        summary = parse_summary(runner.summary)
+        if save:
+            save_summary(report_name, summary, project, type=1)
+        return summary
+    except Exception as e:
+        print(traceback.print_exc())
+    finally:
+        os.chdir(BASE_DIR)
+        shutil.rmtree(os.path.dirname(debugtalk_path))
 
 
 def load_test(test, project=None):
@@ -351,9 +359,24 @@ def save_summary(name, summary, project, type=2):
         return
     if name is "":
         name = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    models.Report.objects.create(**{
-        "project": models.Project.objects.get(id=project),
+    simple_summary = {
+        "time": summary["time"],
+        "platform": summary["platform"],
+        "stat": summary["stat"],
+        "success": summary["success"],
+    }
+    project_class = models.Project.objects.get(id=project)
+    report = models.Report.objects.create(**{
+        "project": project_class,
         "name": name,
         "type": type,
-        "summary": json.dumps(summary, ensure_ascii=False),
+        "summary": json.dumps(simple_summary)
     })
+    report.save()
+    report_detail = models.ReportDetail.objects.create(**{
+        "project": project_class,
+        "name": name,
+        "report": report,
+        "summary": json.dumps(summary, ensure_ascii=False)
+    })
+    report_detail.save()

@@ -1,9 +1,13 @@
 # _*_ coding: utf-8 _*_
+import json
+from collections import deque
+
 from celery import shared_task  # 可以无需任何具体的应用程序实例创建任务
-from django.core.exceptions import ObjectDoesNotExist
 
 from fastrunner import models
 from fastrunner.utils.loader import save_summary, debug_suite, debug_api
+from fastrunner.utils.host import parse_host
+from fastrunner.utils.email_send import send_result_email, prepare_email_content
 
 
 @shared_task
@@ -34,35 +38,62 @@ def async_debug_suite(suite, project, obj, report, config):
 def schedule_debug_suite(*args, **kwargs):
     """定时任务
     """
+    project = int(kwargs["project"])
 
-    project = kwargs["project"]
-    suite = []
-    test_sets = []
-    config_list = []
-    for pk in args:
-        try:
-            name = models.Case.objects.get(id=pk).name
-            suite.append({
-                "name": name,
-                "id": pk
-            })
-        except ObjectDoesNotExist:
-            pass
-
-    for content in suite:
-        test_list = models.CaseStep.objects. \
-            filter(case__id=content["id"]).order_by("step").values("body")
-
-        testcase_list = []
+    sample_summary = []
+    for cases in args:
+        case_kwargs = cases.get('kwargs', '')
+        test_list = models.CaseStep.objects.filter(case__id=cases["id"]).order_by("step").values("body")
+        report_name = cases["name"]
+        case_name = cases["name"]
+        test_case = []
         config = None
+        temp_config = []
+        test_data = None
+        temp_baseurl = ''
+        g_host_info = ''
+        if case_kwargs:
+            report_name = case_kwargs["testCaseName"]
+            if case_kwargs["currentTestDataExcel"] != '请选择' and case_kwargs["currentTestDataSheet"]:
+                test_data = (case_kwargs["currentTestDataExcel"], case_kwargs["currentTestDataSheet"])
+            if case_kwargs["hostInfo"] != "请选择":
+                g_host_info = case_kwargs["hostInfo"]
+                host = models.HostIP.objects.get(name=g_host_info, project__id=project)
+                _host_info = json.loads(host.hostInfo)
+                temp_config.extend(_host_info["variables"])
+                temp_baseurl = host.base_url if host.base_url else ''
+
         for content in test_list:
             body = eval(content["body"])
             if "base_url" in body["request"].keys():
                 config = eval(models.Config.objects.get(name=body["name"], project__id=project).body)
                 continue
-            testcase_list.append(body)
-        config_list.append(config)
-        test_sets.append(testcase_list)
+            test_case.append(parse_host(host, body))
 
-    summary = debug_suite(test_sets, project, suite, config_list, save=False)
-    save_summary("", summary, project, type=3)
+        if config and g_host_info not in ["请选择", '']:
+            config["variables"].extend(temp_config)
+            if temp_baseurl:
+                config["request"]["base_url"] = temp_baseurl
+        if not config and g_host_info not in ["请选择", '']:
+            config = {
+                "variables": temp_config,
+                "request": {
+                    "base_url": temp_baseurl
+                }
+            }
+
+        summary = debug_api(test_case, project, name=case_name, config=parse_host(host, config), save=False, test_data=test_data)
+        save_summary(report_name, summary, project, type=3)
+        if kwargs["strategy"] != '从不发送':
+            summary["name"] = report_name
+            sample_summary.append(summary)
+
+    if sample_summary:
+        peoject_name = models.Project.objects.get(id=project).name
+        subject_name = peoject_name
+        html_conetnt = prepare_email_content(sample_summary, subject_name)
+        send_status = send_result_email(subject_name, kwargs["receiver"], kwargs["mail_cc"], send_html_content=html_conetnt)
+        if send_status:
+            print('发送成功')
+        else:
+            print('发送失败')

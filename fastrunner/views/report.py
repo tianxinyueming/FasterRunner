@@ -38,6 +38,7 @@ class ReportView(GenericViewSet, mixins.RetrieveModelMixin, mixins.ListModelMixi
 
     def retrieve(self, request, *args, **kwargs):
         instance = self.get_object()
-        summary = json.loads(instance.summary, encoding="utf-8")
+        report_detail = models.ReportDetail.objects.get(report=instance)
+        summary = json.loads(report_detail.summary, encoding="utf-8")
         summary["html_report_name"] = instance.name
         return render_to_response('report_template.html', summary)

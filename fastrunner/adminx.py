@@ -87,7 +87,7 @@ class PycodeAdmin(object):
 
 
 # 全局配置
-xadmin.site.register(views.BaseAdminView, BaseSetting)
+# xadmin.site.register(views.BaseAdminView, BaseSetting)
 xadmin.site.register(views.CommAdminView, GlobalSettings)
 # djcelery
 xadmin.site.register(IntervalSchedule)  # 存储循环任务设置的时间

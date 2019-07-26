@@ -7,6 +7,7 @@ from rest_framework import mixins
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.permissions import DjangoModelPermissions
+from djcelery import models as celery_models
 
 from fastrunner import models, serializers
 from FasterRunner import pagination
@@ -48,11 +49,16 @@ class ProjectView(ModelViewSet):
 
     def perform_create(self, serializer):
         instance = serializer.save()
-        prepare.project_init(instance)
+        # 生成debugtalk.py文件
+        models.Pycode.objects.create(project=instance, name="debugtalk.py", desc="项目的根目录文件，项目中所使用函数都从此中调用")
+        # 自动生成API tree
+        models.Relation.objects.create(project=instance)
+        # 自动生成Test Tree
+        models.Relation.objects.create(project=instance, type=2)
 
     def perform_destroy(self, instance):
         project_id = instance.id
-        prepare.project_end(project_id)
+        celery_models.PeriodicTask.objects.filter(description=project_id).delete()
         instance.delete()
 
 
@@ -160,6 +166,9 @@ class FileView(ModelViewSet):
         else:
             self.kwargs['pk'] = self.get_queryset()[0].id
             instance = self.get_object()
+            filepath = os.path.join(MEDIA_ROOT, str(instance.file))
+            if os.path.exists(filepath):
+                os.remove(filepath)
 
             partial = kwargs.pop('partial', False)
             serializer = self.get_serializer(instance, data=request.data, partial=partial)

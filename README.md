@@ -19,7 +19,9 @@
 - 配置管理里新加了output参数，output将写入报告里，output参数来自于整个用例运行时variables/extract等。
 - 更新了api与testcase的关系。沿用httprunner作者的思想，测试用例中的request/headers/method/url内容直接调用相应api中的内容；并且更新api的request/header/method/url时，会自动改变测试用例中的request/headers/method/url
 - 单个testcase执行时选择是否异步，默认异步，并且可以指定报告名称
-- 增加了xadmin后台管理系统，通过后台管理系统可以方便的完成分配账号以及简单的api权限控制
+- 增加了xadmin后台管理系统，通过后台管理系统可以方便的完成分配账号以及api层权限控制
+- 更新在服务器上的docker-compose部署方式，参考docker-compose.yml文件。networks参数是内网，需要先在后台创建。
+- 定时任务模块可以单独运行且发送邮件。定时任务里的每一条用例互不相干。
 ```
 
 ## Docker 部署 uwsgi+nginx模式
@@ -53,13 +55,13 @@
 6. python manage.py runserver 开发环境启动服务
 7. 安装rabbmitMQ中间件，并配置setting中的BROKER_URL（默认一般不用修改）
 7. celery -A FasterRunner worker -l info 启动异步worker
-``` 
+```
 
 ##### 其他注意点
 - Windows环境安装mysqlclient可能需要先安装Microsoft Visual c++ 14.0,然后在 https://www.lfd.uci.edu/~gohlke/pythonlibs/ 此链接下找自己需要的windows安装包
-- 如果提示：No module named 'djcelery' ，再执行一遍 pip install django-celery==3.2.2
+- 如果提示：No module named 'djcelery' ，再执行一遍 pip install django-celery==3.3.0
 - 如果提示： ValueError: Unable to configure handler 'default': [Errno 2] No such file or directory: 'mypath\\FasterRunner\\logs\\debug.log' , 手动创建FasterRunner\\logs\\debug.log
 - 下载rabbmitMQ所需的erlang时，在官网下载很慢，可以访问 https://www.erlang-solutions.com/resources/download.html，windows配置参考：https://blog.csdn.net/qq_31634461/article/details/79377256
 - ubuntu 安装py3.6缺少包参考：https://blog.csdn.net/kunagisatomo_i/article/details/81177558
-- xadmin后台添加小组件报错：注释掉/usr/local/lib/pyon3.7/site-packages/django/forms/boundfield.py中的大概93行  ```#renderer=self.form.renderer```
-- 如果运行结果数据比较大的话，mysql内运行：set global max_allowed_packet=1073741824; 这是1G的大小。
+- xadmin后台添加小组件报错，注释掉python包里的：/site-packages/django/forms/boundfield.py中的大概93行  ```#renderer=self.form.renderer```
+- 如果测试用例运行结果数据比较大的话，更改mysql配置文件[mysqld]：max_allowed_packet=1073741824; 这是1G的大小。

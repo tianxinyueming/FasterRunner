@@ -26,7 +26,7 @@ class Project(BaseTable):
 
     name = models.CharField("项目名称", unique=True, null=False, max_length=100)
     desc = models.CharField("简要介绍", max_length=100, null=False)
-    responsible = models.CharField("创建人", max_length=20, null=False)
+    responsible = models.CharField("负责人", max_length=20, null=False)
 
     def __str__(self):
         return self.name
@@ -40,6 +40,7 @@ class Config(BaseTable):
     class Meta:
         verbose_name = "配置信息"
         verbose_name_plural = verbose_name
+        unique_together = [['project', 'name']]
 
     name = models.CharField("环境名称", null=False, max_length=100)
     body = models.TextField("主体信息", null=False)
@@ -123,8 +124,9 @@ class HostIP(BaseTable):
     class Meta:
         verbose_name = "HOST配置"
         verbose_name_plural = verbose_name
+        unique_together = [['project', 'name']]
 
-    name = models.CharField(null=False, max_length=20, unique=True, help_text="环境名称")
+    name = models.CharField(null=False, max_length=20, help_text="环境名称")
     hostInfo = models.TextField(null=False, help_text="环境信息详情")
     project = models.ForeignKey(Project, on_delete=models.CASCADE, help_text="所属项目")
     base_url = models.URLField(null=True, blank=True, help_text="环境根地址")
@@ -166,8 +168,26 @@ class Report(BaseTable):
 
     name = models.CharField("报告名称", null=False, max_length=100)
     type = models.IntegerField("报告类型", choices=report_type)
+    summary = models.TextField("简要主体信息", null=False)
+    project = models.ForeignKey(Project, on_delete=models.CASCADE)
+
+    def __str__(self):
+        return self.name
+
+
+class ReportDetail(BaseTable):
+    """
+    报告主题信息存储
+    """
+
+    class Meta:
+        verbose_name = "测试报告详情"
+        verbose_name_plural = verbose_name
+
+    name = models.CharField("报告名称", null=False, max_length=100)
     summary = models.TextField("主体信息", null=False)
     project = models.ForeignKey(Project, on_delete=models.CASCADE)
+    report = models.OneToOneField(Report, on_delete=models.CASCADE)
 
     def __str__(self):
         return self.name

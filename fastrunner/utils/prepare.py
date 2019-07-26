@@ -38,44 +38,6 @@ def get_project_detail(pk):
     }
 
 
-def project_init(project):
-    """新建项目初始化
-    """
-    try:
-        # 自动生成默认debugtalk.py
-        models.Pycode.objects.create(project=project,
-                                     name="debugtalk.py",
-                                     desc="项目的根目录文件，项目中所使用函数都从此中调用",
-                                     code="")
-        # 自动生成API tree
-        models.Relation.objects.create(project=project)
-        # 自动生成Test Tree
-        models.Relation.objects.create(project=project, type=2)
-        return True
-    except Exception:
-        print('peoject init fail')
-        print(traceback.print_exc())
-        return False
-
-
-def project_end(project):
-    """删除项目相关表 filter不会报异常 最好不用get
-    """
-    models.Pycode.objects.filter(project=project).delete()
-    models.Config.objects.filter(project=project).delete()
-    models.API.objects.filter(project=project).delete()
-    models.Relation.objects.filter(project=project).delete()
-    models.Report.objects.filter(project=project).delete()
-    models.Variables.objects.filter(project=project).delete()
-    models.ModelWithFileField.objects.filter(project=project).delete()
-    celery_models.PeriodicTask.objects.filter(description=project).delete()
-
-    case = models.Case.objects.filter(project=project).values_list('id')
-    if case:
-        for case_id in case:
-            models.CaseStep.objects.filter(case__id=case_id).delete()
-
-
 def tree_end(params, project):
     """
     project: Project Model

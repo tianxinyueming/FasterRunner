@@ -17,6 +17,7 @@ Including another URLconf
 from django.urls import path
 from django.conf.urls import url, include
 from rest_framework.routers import DefaultRouter
+from django.views.generic import TemplateView
 
 from fastrunner.views import project, api, config, schedule, run, suite, report, download
 
@@ -36,6 +37,8 @@ router.register(r'pycode', project.PycodeView, base_name='pycode')
 router.register(r'runpycode', project.PycodeRunView, base_name="runpycode")
 # 测试报告视图
 router.register(r'reports', report.ReportView, base_name='reports')
+# 定时任务
+router.register(r'schedule', schedule.ScheduleView, base_name='schedule')
 
 urlpatterns = [
     url(r'^', include(router.urls)),
@@ -46,16 +49,6 @@ urlpatterns = [
 
     path('dashboard/<int:pk>/', project.DashboardView.as_view({
         "get": "get"
-    })),
-
-    # 定时任务相关接口
-    path('schedule/', schedule.ScheduleView.as_view({
-        "get": "list",
-        "post": "add"
-    })),
-
-    path('schedule/<int:pk>/', schedule.ScheduleView.as_view({
-        "delete": "delete"
     })),
 
     # 二叉树接口地址
@@ -107,8 +100,8 @@ urlpatterns = [
     path('run_api_tree/', run.run_api_tree),
     path('run_api/', run.run_api),
 
-    # run testsuite
+    # run testcase
     path('run_testsuite_pk/<int:pk>/', run.run_testsuite_pk),
     path('run_suite_tree/', run.run_suite_tree),
-    path('automation_test/', run.automation_test)
+    path('run_schedule_test/<int:pk>/', run.run_schedule_test)
 ]

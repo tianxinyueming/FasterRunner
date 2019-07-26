@@ -16,19 +16,20 @@ RUN sed -i s@/archive.ubuntu.com/@/mirrors.aliyun.com/@g /etc/apt/sources.list &
     python3-pip \
     libmysqlclient-dev \
     nginx \
-    vim \
     python3-dateutil \
     tzdata && \
     dpkg-reconfigure --frontend noninteractive tzdata
 
-WORKDIR /home/ebao/fastrunner/FasterRunner/
+WORKDIR /opt/workspace/FasterRunner/
 
-COPY . .
+COPY start.sh .
+COPY manage.py .
+COPY uwsgi.ini .
+COPY requirements.txt .
 
 RUN  pip3 install -r ./requirements.txt -i \
-    https://pypi.douban.com/simple \
-    --default-timeout=100 && \
-    ln -s /home/ebao/fastrunner/FasterRunner/nginx.conf /etc/nginx/sites-enabled/
+     https://pypi.douban.com/simple \
+     --default-timeout=100
 
 EXPOSE 5000
 
