@@ -8,7 +8,7 @@ from jinja2 import Environment, FileSystemLoader
 from django.core.mail import EmailMultiAlternatives
 
 from FasterRunner.settings import EMAIL_FROM, BASE_DIR
-
+from fastrunner.utils.writeExcel import write_excel_log
 
 def control_email(runresult, kwargs):
     if kwargs["strategy"] == '从不发送':
@@ -93,7 +93,7 @@ def control_email(runresult, kwargs):
         return False
 
 
-def send_result_email(send_subject, send_to, send_cc, send_text_content=None, send_html_content=None, from_email=EMAIL_FROM):
+def send_result_email(send_subject, send_to, send_cc, send_text_content=None, send_html_content=None, send_file_path=[], from_email=EMAIL_FROM):
     """
     :param send_subject: str
     :param send_to: list
@@ -101,6 +101,7 @@ def send_result_email(send_subject, send_to, send_cc, send_text_content=None, se
     :param send_text_content: str
     :param send_html_content: html
     :param from_email: str
+    :param send_file_path: list
     :return: bool
     """
     msg = EmailMultiAlternatives(subject=send_subject, from_email=from_email, to=send_to, cc=send_cc)
@@ -108,6 +109,9 @@ def send_result_email(send_subject, send_to, send_cc, send_text_content=None, se
         msg.attach_alternative(send_text_content, 'text/plain')
     if send_html_content:
         msg.attach_alternative(send_html_content, 'text/html')
+    if send_file_path:
+        for file_path in send_file_path:
+            msg.attach_file(file_path)
     send_status = msg.send()
     return send_status
 
@@ -172,19 +176,27 @@ def parser_runresult(sample_summary):
     }
     return runresult
 
-    # # 汇总报告
-    # summary_report = sample_summary[0]
-    # for index, summary in enumerate(sample_summary):
-    #     if index > 0:
-    #         summary_report["success"] = summary["success"] if not summary["success"] else summary_report["success"]
-    #         summary_report["stat"]["testsRun"] += summary["stat"]["testsRun"]
-    #         summary_report["stat"]["failures"] += summary["stat"]["failures"]
-    #         summary_report["stat"]["skipped"] += summary["stat"]["skipped"]
-    #         summary_report["stat"]["successes"] += summary["stat"]["successes"]
-    #         summary_report["stat"]["expectedFailures"] += summary["stat"]["expectedFailures"]
-    #         summary_report["stat"]["unexpectedSuccesses"] += summary["stat"]["unexpectedSuccesses"]
-    #         summary_report["time"]["duration"] += summary["time"]["duration"]
-    #         summary_report["details"].extend(summary["details"])
+
+def prepare_email_file(sample_summary):
+    """
+    :param sample_summary: list
+    :return: file path list
+    """
+    # 汇总报告
+    summary_report = sample_summary[0]
+    for index, summary in enumerate(sample_summary):
+        if index > 0:
+            summary_report["success"] = summary["success"] if not summary["success"] else summary_report["success"]
+            summary_report["stat"]["testsRun"] += summary["stat"]["testsRun"]
+            summary_report["stat"]["failures"] += summary["stat"]["failures"]
+            summary_report["stat"]["skipped"] += summary["stat"]["skipped"]
+            summary_report["stat"]["successes"] += summary["stat"]["successes"]
+            summary_report["stat"]["expectedFailures"] += summary["stat"]["expectedFailures"]
+            summary_report["stat"]["unexpectedSuccesses"] += summary["stat"]["unexpectedSuccesses"]
+            summary_report["time"]["duration"] += summary["time"]["duration"]
+            summary_report["details"].extend(summary["details"])
+    file_path = write_excel_log(summary_report)
+    return [file_path]
 
 
 def __filter_runresult(runresult, self_error_list):
