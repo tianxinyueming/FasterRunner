@@ -1,12 +1,96 @@
 # -*- coding: utf-8 -*-
 import time
 import json
+import os
 from copy import deepcopy
 
 from jinja2 import Environment, FileSystemLoader
 from django.core.mail import EmailMultiAlternatives
 
 from FasterRunner.settings import EMAIL_FROM, BASE_DIR
+
+
+def control_email(runresult, kwargs):
+    if kwargs["strategy"] == '从不发送':
+        return False
+    elif kwargs["strategy"] == '始终发送':
+        return True
+    elif kwargs["strategy"] == '仅失败发送':
+        if runresult["failures"] > 0:
+            return True
+    elif kwargs["strategy"] == '监控邮件':
+        """
+            新建一个monitor.json文件
+            {
+                task_name:{
+                    "error_count": 0,
+                    "error_message": ""
+                }
+            }
+            runresultErrorMsg 是经过关键词过滤的执行结果，如果api调用失败后返回的报错信息内包含这些关键词，则将这个api的报错结果暂时记为空
+            fail_count: 提前设置的错误此处阈值，超过则发送邮件
+
+            1. 若 runresultErrorMsg == '' and error_message== '':  error_count = 0,error_message="" 不发送邮件
+            2. 若 runresultErrorMsg == '' and error_message!= '':  error_count = 0,error_message="" 发送邮件
+            3. 若 runresultErrorMsg != '' and error_message== '': error_count = 1, error_message=runresultErrorMsg，发送邮件
+            4. 若 runresultErrorMsg != '' and error_message！= '' and error_message != runresultErrorMsg： error_count = 1,error_message=runresultErrorMsg 发送邮件
+            5. 若 runresultErrorMsg！= '' and error_message != '' and error_message == runresultErrorMsg：
+                3.1 若error_count <= fail_count: 发送邮件，error_count+1
+                3.2 若error_count > fail_count: 不发送邮件，error_count+1
+        """
+
+        monitor_path = os.path.join(BASE_DIR, 'logs', 'monitor.json')
+        if not os.path.isfile(monitor_path):
+            all_json = {
+                kwargs["task_name"]: {
+                    "error_count": 0,
+                    "error_message": ""
+                }
+            }
+        else:
+            with open(monitor_path, 'r', encoding='utf-8') as _json:
+                all_json = json.load(_json)
+            if kwargs["task_name"] not in all_json.keys():
+                all_json[kwargs["task_name"]] = {
+                        "error_count": 0,
+                        "error_message": ""
+                    }
+
+        is_send_email = False
+        last_json = all_json[kwargs["task_name"]]
+        runresultErrorMsg = __filter_runresult(runresult, kwargs["self_error"])
+
+        if runresultErrorMsg == '' and last_json["error_message"] == '':
+            last_json["error_count"] = 0
+            last_json["error_message"] = ""
+            is_send_email = False
+        elif runresultErrorMsg == '' and last_json["error_message"] != '':
+            last_json["error_count"] = 0
+            last_json["error_message"] = ""
+            is_send_email = True
+        elif runresultErrorMsg != '' and last_json["error_message"] == '':
+            last_json["error_count"] = 1
+            last_json["error_message"] = runresultErrorMsg
+            is_send_email = True
+        elif runresultErrorMsg != '' and last_json["error_message"] != '' and last_json["error_message"] != runresultErrorMsg:
+            last_json["error_count"] = 1
+            last_json["error_message"] = runresultErrorMsg
+            is_send_email = True
+        elif runresultErrorMsg != '' and last_json["error_message"] != '' and last_json["error_message"] == runresultErrorMsg:
+            if last_json["error_count"] < int(kwargs["fail_count"]):
+                is_send_email = True
+            else:
+                is_send_email = False
+            last_json["error_count"] += 1
+
+        all_json[kwargs["task_name"]] = last_json
+        with open(monitor_path, 'w', encoding='utf-8') as f:
+            f.write(json.dumps(all_json))
+
+        return is_send_email
+
+    else:
+        return False
 
 
 def send_result_email(send_subject, send_to, send_cc, send_text_content=None, send_html_content=None, from_email=EMAIL_FROM):
@@ -28,12 +112,27 @@ def send_result_email(send_subject, send_to, send_cc, send_text_content=None, se
     return send_status
 
 
-def prepare_email_content(sample_summary, subject_name):
+def prepare_email_content(runresult, subject_name):
     """
-    :param sample_summary: list 定时任务生成的报告列表
+    :param runresult: 生成的简要分析结果
     :param subject_name: html名称
     :return: email conetnt
     """
+    batch_result = {}
+    batch_result['report_name'] = subject_name
+    batch_result['time_start'] = runresult["start_time"]
+    batch_result['testsRun'] = runresult["testsRun"]
+    batch_result['failures'] = runresult["failures"]
+    batch_result['successes'] = runresult["successes"]
+    batch_result['tests'] = runresult["tests"]
+    batch_result['error_list'] = runresult["error_list"]
+
+    report_template = Environment(loader=FileSystemLoader(BASE_DIR)).get_template('./templates/email_report.html')
+
+    return report_template.render(batch_result)
+
+
+def parser_runresult(sample_summary):
     testsRun = 0
     failures = 0
     successes = 0
@@ -63,19 +162,15 @@ def prepare_email_content(sample_summary, subject_name):
         tests.append(deepcopy(test))
 
     successes = testsRun - failures
-
-    batch_result = {}
-    batch_result['report_name'] = subject_name
-    batch_result['time_start'] = time.strftime('%Y-%m-%d %H %M %S', time.localtime(sample_summary[0]["time"]["start_at"]))
-    batch_result['testsRun'] = testsRun
-    batch_result['failures'] = failures
-    batch_result['successes'] = successes
-    batch_result['tests'] = tests
-    batch_result['error_list'] = error_list
-
-    report_template = Environment(loader=FileSystemLoader(BASE_DIR)).get_template('./templates/email_report.html')
-
-    return report_template.render(batch_result)
+    runresult = {
+        "testsRun": testsRun,
+        "failures": failures,
+        "successes": successes,
+        "tests": tests,
+        "error_list": error_list,
+        "start_time": time.strftime('%Y-%m-%d %H %M %S', time.localtime(sample_summary[0]["time"]["start_at"]))
+    }
+    return runresult
 
     # # 汇总报告
     # summary_report = sample_summary[0]
@@ -90,3 +185,19 @@ def prepare_email_content(sample_summary, subject_name):
     #         summary_report["stat"]["unexpectedSuccesses"] += summary["stat"]["unexpectedSuccesses"]
     #         summary_report["time"]["duration"] += summary["time"]["duration"]
     #         summary_report["details"].extend(summary["details"])
+
+
+def __filter_runresult(runresult, self_error_list):
+    runresultErrorMsg = ''
+    if runresult["error_list"]:
+        for err in runresult["error_list"]:
+            runresultErrorMsg += __is_self_error(err["content"].strip(), self_error_list)
+    return runresultErrorMsg
+
+
+def __is_self_error(error_content, self_error_list):
+    if error_content and self_error_list:
+        for error_message in self_error_list:
+            if error_message in error_content:
+                return ""
+    return error_content

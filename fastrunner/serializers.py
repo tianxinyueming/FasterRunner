@@ -167,12 +167,16 @@ class PeriodicTaskSerializer(serializers.ModelSerializer):
         summary_kwargs = json.loads(obj.kwargs)
         receiver = ""
         mail_cc = ""
+        self_error = ""
         for _ in summary_kwargs["receiver"]:
             receiver += _ + ';'
         for _ in summary_kwargs["mail_cc"]:
             mail_cc += _ + ';'
+        for _ in summary_kwargs["self_error"]:
+            self_error += _ + ';'
         summary_kwargs["receiver"] = receiver
         summary_kwargs["mail_cc"] = mail_cc
+        summary_kwargs["self_error"] = self_error
         return summary_kwargs
 
     def get_summary_args(self,obj):

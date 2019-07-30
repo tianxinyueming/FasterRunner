@@ -7,7 +7,7 @@ from celery import shared_task  # 可以无需任何具体的应用程序实例�
 from fastrunner import models
 from fastrunner.utils.loader import save_summary, debug_suite, debug_api
 from fastrunner.utils.host import parse_host
-from fastrunner.utils.email_send import send_result_email, prepare_email_content
+from fastrunner.utils.email_send import send_result_email, prepare_email_content, control_email, parser_runresult
 
 
 @shared_task
@@ -89,11 +89,14 @@ def schedule_debug_suite(*args, **kwargs):
             sample_summary.append(summary)
 
     if sample_summary:
-        peoject_name = models.Project.objects.get(id=project).name
-        subject_name = peoject_name
-        html_conetnt = prepare_email_content(sample_summary, subject_name)
-        send_status = send_result_email(subject_name, kwargs["receiver"], kwargs["mail_cc"], send_html_content=html_conetnt)
-        if send_status:
-            print('发送成功')
-        else:
-            print('发送失败')
+        runresult = parser_runresult(sample_summary)
+        is_send_email = control_email(runresult, kwargs)
+        if is_send_email:
+            peoject_name = models.Project.objects.get(id=project).name
+            subject_name = peoject_name + kwargs["task_name"]
+            html_conetnt = prepare_email_content(runresult, subject_name)
+            send_status = send_result_email(subject_name, kwargs["receiver"], kwargs["mail_cc"], send_html_content=html_conetnt)
+            if send_status:
+                print('邮件发送成功')
+            else:
+                print('邮件发送失败')

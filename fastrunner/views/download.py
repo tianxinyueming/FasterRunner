@@ -39,7 +39,7 @@ class DownloadView(APIView):
                 filename = fileObject.name
                 filepath = os.path.join(MEDIA_ROOT, str(fileObject.file))
             else:
-                fileObject = models.Report.objects.get(project_id=project, id=idno)
+                fileObject = models.ReportDetail.objects.get(project_id=project, report_id=idno)
                 filename = fileObject.name
                 summary = json.loads(fileObject.summary)
                 filepath = write_excel_log(summary)
@@ -50,4 +50,4 @@ class DownloadView(APIView):
             return fileresponse
 
         except ObjectDoesNotExist:
-            return Response(response.FILE_DOWNLOAD_FAIL,status=status.HTTP_400_BAD_REQUEST)
+            return Response(response.FILE_DOWNLOAD_FAIL, status=status.HTTP_400_BAD_REQUEST)
