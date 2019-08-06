@@ -65,7 +65,7 @@
 
 ##### 其他注意点
 - Windows环境安装mysqlclient可能需要先安装Microsoft Visual c++ 14.0,然后在 https://www.lfd.uci.edu/~gohlke/pythonlibs/ 此链接下找自己需要的windows安装包
-- 如果提示：No module named 'djcelery' ，再执行一遍 pip install django-celery==3.3.0
+- 如果提示：No module named 'djcelery' ，再执行一遍 pip install django-celery==3.2.2
 - 如果提示： ValueError: Unable to configure handler 'default': [Errno 2] No such file or directory: 'mypath\\FasterRunner\\logs\\debug.log' , 手动创建FasterRunner\\logs\\debug.log
 - 下载rabbmitMQ所需的erlang时，在官网下载很慢，可以访问 https://www.erlang-solutions.com/resources/download.html，windows配置参考：https://blog.csdn.net/qq_31634461/article/details/79377256
 - ubuntu 安装py3.6缺少包参考：https://blog.csdn.net/kunagisatomo_i/article/details/81177558
