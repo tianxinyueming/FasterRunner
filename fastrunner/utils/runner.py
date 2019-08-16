@@ -34,8 +34,8 @@ class DebugCode(object):
             for file in files:
                 file_path = os.path.join(self.temp, file.name)
                 loader.FileLoader.dump_python_file(file_path, file.code)
-            testdata_files = models.ModelWithFileField.objects.filter(project__id=self.project)
 
+            testdata_files = models.ModelWithFileField.objects.filter(project__id=self.project)
             for testdata in testdata_files:
                 testdata_path = os.path.join(self.temp, testdata.name)
                 myfile_path = os.path.join(BASE_DIR, 'media', str(testdata.file))

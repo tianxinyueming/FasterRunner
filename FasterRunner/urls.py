@@ -31,6 +31,6 @@ urlpatterns = [
     # jwt的认证接口
     url(r'^api/user/login/', obtain_jwt_token),
 
-    url(r'^api/fastrunner/xadmin/', xadmin.site.urls),
+    url(r'^api/xadmin/', xadmin.site.urls),
     path('api/fastrunner/', include('fastrunner.urls'))
 ]

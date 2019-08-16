@@ -168,15 +168,19 @@ class PeriodicTaskSerializer(serializers.ModelSerializer):
         receiver = ""
         mail_cc = ""
         self_error = ""
+        sensitive_keys = ""
         for _ in summary_kwargs["receiver"]:
             receiver += _ + ';'
         for _ in summary_kwargs["mail_cc"]:
             mail_cc += _ + ';'
         for _ in summary_kwargs["self_error"]:
             self_error += _ + ';'
+        for _ in summary_kwargs["sensitive_keys"]:
+            sensitive_keys += _ + ';'
         summary_kwargs["receiver"] = receiver
         summary_kwargs["mail_cc"] = mail_cc
         summary_kwargs["self_error"] = self_error
+        summary_kwargs["sensitive_keys"] = sensitive_keys
         return summary_kwargs
 
     def get_summary_args(self,obj):
@@ -214,3 +218,12 @@ class PycodeSerializer(serializers.ModelSerializer):
         model = models.Pycode
         fields = '__all__'
         # fields = ['id', 'update_time', 'code', 'project', 'desc', 'name']
+
+
+class TaskMetaSerializer(serializers.ModelSerializer):
+    """
+    异步任务结果序列化
+    """
+    class Meta:
+        model = celery_models.TaskMeta
+        fields = ['task_id', 'id', 'status', 'date_done', 'traceback']

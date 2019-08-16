@@ -195,6 +195,7 @@ def load_debugtalk(project):
     """
     tempfile_path = tempfile.mkdtemp(prefix='tempHttpRunner', dir=os.path.join(BASE_DIR, 'tempWorkDir'))
     debugtalk_path = os.path.join(tempfile_path, 'debugtalk.py')
+    os.chdir(tempfile_path)
     try:
         py_files = models.Pycode.objects.filter(project__id=project)
         for file in py_files:
@@ -210,7 +211,7 @@ def load_debugtalk(project):
     except Exception as e:
         os.chdir(BASE_DIR)
         shutil.rmtree(os.path.dirname(debugtalk_path))
-        print(traceback.print_exc())
+        raise SyntaxError(str(e))
 
 
 def debug_suite(suite, project, obj, config, save=True):
@@ -243,7 +244,7 @@ def debug_suite(suite, project, obj, config, save=True):
             save_summary("", summary, project, type=1)
         return summary
     except Exception as e:
-        print(traceback.print_exc())
+        raise SyntaxError(str(e))
     finally:
         os.chdir(BASE_DIR)
         shutil.rmtree(os.path.dirname(debugtalk_path))
@@ -289,7 +290,7 @@ def debug_api(api, project, name=None, config=None, save=False, test_data=None, 
             save_summary(report_name, summary, project, type=1)
         return summary
     except Exception as e:
-        print(traceback.print_exc())
+        raise SyntaxError(str(e))
     finally:
         os.chdir(BASE_DIR)
         shutil.rmtree(os.path.dirname(debugtalk_path))

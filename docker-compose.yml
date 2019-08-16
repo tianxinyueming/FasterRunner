@@ -9,7 +9,7 @@ services:
             - MYSQL_ROOT_PASSWORD=xhb123456
         volumes:
             - ./mysql:/var/lib/mysql  # 映射mysql数据
-            - ./mysql/mysql_conf:/etc/mysql/  # 映射出mysql的配置文件
+            - ./FasterRunner/mydb.cnf:/etc/mysql/mysql.conf.d/mysqld.cnf  # 映射出mysql的配置文件
         ports:
             - "3306:3306"
         restart: always

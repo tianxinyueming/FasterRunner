@@ -37,7 +37,7 @@ email_host_user = cf.get(env+'-config', 'EMAIL_HOST_USER')
 email_host_password = cf.get(env+'-config', 'EMAIL_HOST_PASSWORD')
 email_use_tls = cf.getboolean(env+'-config', 'EMAIL_USE_TLS')
 email_from = cf.get(env+'-config', 'EMAIL_FROM')
-
+REPORTS_HOST = cf.get(env+'-config', 'REPORTS_HOST')
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -67,7 +67,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'fastrunner.apps.FastrunnerConfig',
+    'fastrunner',
     'rest_framework',
     'corsheaders',
     'djcelery',

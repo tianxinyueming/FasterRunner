@@ -36,6 +36,7 @@ class ScheduleView(ModelViewSet):
             receiver: str
             copy: str
             project: int,
+            sensitive_keys: str
         }
         """
         if 'id' in request.data.keys():
@@ -175,12 +176,13 @@ def format_request(request_data):
     _project = request_data.get('project')
     _fail_count = request_data.get('fail_count', 1)
     _self_error = request_data.get('self_error', '')
+    _sensitive_keys = request_data.get('sensitive_keys', '')
 
     receiver = format_email(_receiver)
     mail_cc = format_email(_mail_cc)
     crontab_time = format_crontab(_corntab)
     self_error = [_.strip() for _ in _self_error.split(';') if _]
-
+    sensitive_keys = [_.strip() for _ in _sensitive_keys.split(';') if _]
     _email = {
         "strategy": _strategy,
         "mail_cc": mail_cc,
@@ -189,7 +191,8 @@ def format_request(request_data):
         "project": _project,
         "task_name": _name,
         "fail_count": _fail_count,
-        "self_error": self_error
+        "self_error": self_error,
+        "sensitive_keys": sensitive_keys
     }
 
     request_data = {

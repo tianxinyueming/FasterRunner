@@ -134,7 +134,6 @@
         width: 70%;
       }
     }
-
   </style>
 </head>
 
@@ -149,16 +148,14 @@
       <td colspan="2">{{time_start}}</td>
     </tr>
     <tr>
-      <th>TOTAL</th>
-      <th>SUCCESS</th>
-      <th>FAILED</th>
-      <!-- <th>ExpectedFailure</th>
-      <th>UnexpectedSuccess</th> -->
+      <th>STAT</th>
+      <th>TASKS&nbsp;(pass/error)</th>
+      <th>TESTCASES&nbsp;(success/fail)</th>
     </tr>
     <tr>
-      <td>{{testsRun}}</td>
-      <td>{{successes}}</td>
-      <td>{{failures}}</td>
+      <td>total(details) =></td>
+      <td>{{tasks}}&nbsp;({{pass_task}}/{{fail_task}})</td>
+      <td>{{testsRun}}&nbsp;({{successes}}/{{failures}})</td>
     </tr>
   </table>
 
@@ -177,21 +174,19 @@
   </table>
 
   {% if error_list|length %}
-
     <h4>错误信息:</h4>
     <table id="errorDetails">
       <tr>
-        <th>Test Suite</th>
+        <th>Task</th>
         <th>Error Message</th>
       </tr>
       {% for err in error_list %}
         <tr>
-          <th class="failure" style="width:10em;">{{err.proj}}</th>
-          <td style="text-align:left;">{{ err.content }}</td>
+            <td class="failure" style="width:10em;">{{err.proj}}</td>
+            <td style="text-align:left;"><pre>{{ err.content | e }}</pre></td>
         </tr>
       {% endfor %}
     </table>
-
   {% endif %}
 
 </body>

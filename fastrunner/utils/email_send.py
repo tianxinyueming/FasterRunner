@@ -2,13 +2,19 @@
 import time
 import json
 import os
+import io
+import traceback
+import string
+import random
 from copy import deepcopy
+from datetime import datetime
 
-from jinja2 import Environment, FileSystemLoader
+from jinja2 import Environment, FileSystemLoader, Template
 from django.core.mail import EmailMultiAlternatives
 
-from FasterRunner.settings import EMAIL_FROM, BASE_DIR
+from FasterRunner.settings import EMAIL_FROM, BASE_DIR, REPORTS_HOST
 from fastrunner.utils.writeExcel import write_excel_log
+
 
 def control_email(runresult, kwargs):
     if kwargs["strategy"] == '从不发送':
@@ -104,16 +110,19 @@ def send_result_email(send_subject, send_to, send_cc, send_text_content=None, se
     :param send_file_path: list
     :return: bool
     """
-    msg = EmailMultiAlternatives(subject=send_subject, from_email=from_email, to=send_to, cc=send_cc)
-    if send_text_content:
-        msg.attach_alternative(send_text_content, 'text/plain')
-    if send_html_content:
-        msg.attach_alternative(send_html_content, 'text/html')
-    if send_file_path:
-        for file_path in send_file_path:
-            msg.attach_file(file_path)
-    send_status = msg.send()
-    return send_status
+    try:
+        msg = EmailMultiAlternatives(subject=send_subject, from_email=from_email, to=send_to, cc=send_cc)
+        if send_text_content:
+            msg.attach_alternative(send_text_content, 'text/plain')
+        if send_html_content:
+            msg.attach_alternative(send_html_content, 'text/html')
+        if send_file_path:
+            for file_path in send_file_path:
+                msg.attach_file(file_path)
+        send_status = msg.send()
+        return send_status
+    except Exception as e:
+        print(traceback.print_exc())
 
 
 def prepare_email_content(runresult, subject_name):
@@ -124,6 +133,9 @@ def prepare_email_content(runresult, subject_name):
     """
     batch_result = {}
     batch_result['report_name'] = subject_name
+    batch_result["tasks"] = runresult["tasks"]
+    batch_result["pass_task"] = runresult["pass_task"]
+    batch_result["fail_task"] = runresult["fail_task"]
     batch_result['time_start'] = runresult["start_time"]
     batch_result['testsRun'] = runresult["testsRun"]
     batch_result['failures'] = runresult["failures"]
@@ -136,28 +148,37 @@ def prepare_email_content(runresult, subject_name):
     return report_template.render(batch_result)
 
 
-def parser_runresult(sample_summary):
+def parser_runresult(sample_summary, sensitive_keys):
+    tasks = 0
+    pass_task = 0
+    fail_task = 0
     testsRun = 0
     failures = 0
     successes = 0
     tests = []
     error_list = []
     for summary in sample_summary:
+        # 删除指定的字段敏感信息,然后保存为html文件
+        report_link = __generate_report(summary, sensitive_keys)
+
         test = {}
         test["status"] = 'success' if summary["success"] else 'error'
         test['name'] = summary["name"]
-        test['link'] = test['name']
+        test['link'] = '<a href=%s>%s</a>' % (report_link, test['name'])
         error_response_content = ''
+        testsRun += len(summary["details"])
         for deatil in summary["details"]:
-            testsRun += len(summary["details"])
             if not deatil["success"]:
                 failures += 1
                 error_api = deatil["records"][-1]
                 error_response = error_api["meta_data"]["response"]
-                error_response_content += error_response["content"] + '\n' \
-                    if 'content' in error_response.keys() and error_response["content"] is not None else ''
+                if 'content' in error_response.keys() and error_response["content"] is not None:
+                    error_response_content += error_response["content"] + '\n'
+                else:
+                    error_response_content += error_api["attachment"] + '\n'
 
         if test["status"] == 'error':
+            fail_task += 1
             err_msg = {}
             err_msg["proj"] = test['name']
             err_msg["content"] = error_response_content
@@ -166,13 +187,18 @@ def parser_runresult(sample_summary):
         tests.append(deepcopy(test))
 
     successes = testsRun - failures
+    tasks = len(tests)
+    pass_task = tasks - fail_task
     runresult = {
+        "tasks": tasks,
+        "pass_task": pass_task,
+        "fail_task": fail_task,
         "testsRun": testsRun,
         "failures": failures,
         "successes": successes,
         "tests": tests,
         "error_list": error_list,
-        "start_time": time.strftime('%Y-%m-%d %H %M %S', time.localtime(sample_summary[0]["time"]["start_at"]))
+        "start_time": time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(sample_summary[0]["time"]["start_at"]))
     }
     return runresult
 
@@ -213,3 +239,51 @@ def __is_self_error(error_content, self_error_list):
             if error_message in error_content:
                 return ""
     return error_content
+
+
+def del_sensitive_content(content, sensitive_keys):
+    """ 通过邮件发送出去的都去除敏感信息,
+        递归处理json，将敏感信息转换成****
+    """
+    SENSITIVE_CONTENT = '******'
+    if isinstance(content, dict):
+        for dict_key, dict_value in content.items():
+            if dict_key in sensitive_keys:
+                content[dict_key] = SENSITIVE_CONTENT
+            else:
+                content[dict_key] = del_sensitive_content(dict_value, sensitive_keys)
+    elif isinstance(content, list):
+        for index, i_content in enumerate(content):
+            content[index] = del_sensitive_content(i_content, sensitive_keys)
+    else:
+        for key in sensitive_keys:
+            if key in str(content):
+                content = SENSITIVE_CONTENT
+    return content
+
+
+def __generate_report(summary, sensitive_keys):
+    if isinstance(sensitive_keys, list) and sensitive_keys:
+        for index, detail in enumerate(summary["details"]):
+            summary["details"][index]["records"] = del_sensitive_content(detail["records"], sensitive_keys)
+            summary["details"][index]["in_out"] = del_sensitive_content(detail["in_out"], sensitive_keys)
+
+    start_at_timestamp = int(summary["time"]["start_at"])
+    summary["time"]["start_datetime"] = datetime.fromtimestamp(start_at_timestamp).strftime('%Y-%m-%d %H:%M:%S')
+
+    report_name = ''.join(random.choices(string.ascii_letters + string.digits, k=32))
+    relative_report_path = os.path.join('media', 'reports', "{}.html".format(report_name))
+    report_template_path = os.path.join(BASE_DIR, 'templates', 'orgin_report_template.html')
+    report_path = os.path.join(BASE_DIR, relative_report_path)
+    if not os.path.isdir(os.path.dirname(report_path)):
+        os.makedirs(os.path.dirname(report_path))
+    with io.open(report_template_path, "r", encoding='utf-8') as fp_r:
+        template_content = fp_r.read()
+        with io.open(report_path, 'w', encoding='utf-8') as fp_w:
+            rendered_content = Template(
+                template_content,
+                extensions=["jinja2.ext.loopcontrols"]
+            ).render(summary)
+            fp_w.write(rendered_content)
+    report_link = os.path.join(REPORTS_HOST, relative_report_path)
+    return report_link

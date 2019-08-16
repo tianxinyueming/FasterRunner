@@ -3,7 +3,7 @@ import xadmin
 from xadmin import views
 
 from .models import Project, Config, API, Case, CaseStep, HostIP, Variables, Report, ModelWithFileField, Pycode
-from djcelery.models import TaskState, WorkerState, PeriodicTask, IntervalSchedule, CrontabSchedule
+from djcelery.models import TaskState, WorkerState, PeriodicTask, IntervalSchedule, CrontabSchedule, TaskMeta
 
 
 class BaseSetting(object):
@@ -95,6 +95,7 @@ xadmin.site.register(CrontabSchedule)  # 存储定时任务设置的时间
 xadmin.site.register(PeriodicTask)  # 存储任务
 xadmin.site.register(TaskState)  # 存储任务执行状态
 xadmin.site.register(WorkerState)  # 存储执行任务的worker
+xadmin.site.register(TaskMeta)
 # 自己的表
 xadmin.site.register(Project, ProjectAdmin)
 xadmin.site.register(Config, ConfigAdmin)

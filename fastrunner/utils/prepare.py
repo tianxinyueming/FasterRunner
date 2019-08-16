@@ -180,7 +180,7 @@ def generate_casestep(body, case):
             if test["body"]["method"] == "config":
                 name = test["body"]["name"]
                 method = test["body"]["method"]
-                config = models.Config.objects.get(name=name)
+                config = models.Config.objects.get(name=name, project=case.project)
                 url = config.base_url
                 new_body = eval(config.body)
                 apiId = 0

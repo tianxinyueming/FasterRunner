@@ -17,9 +17,8 @@ Including another URLconf
 from django.urls import path
 from django.conf.urls import url, include
 from rest_framework.routers import DefaultRouter
-from django.views.generic import TemplateView
 
-from fastrunner.views import project, api, config, schedule, run, suite, report, download
+from fastrunner.views import project, api, config, schedule, run, suite, report, download, taskmeta
 
 router = DefaultRouter()
 # 项目信息
@@ -39,6 +38,8 @@ router.register(r'runpycode', project.PycodeRunView, base_name="runpycode")
 router.register(r'reports', report.ReportView, base_name='reports')
 # 定时任务
 router.register(r'schedule', schedule.ScheduleView, base_name='schedule')
+# 异步任务结果
+router.register(r'taskmeta', taskmeta.TaskMetaView, base_name='taskmeta')
 
 urlpatterns = [
     url(r'^', include(router.urls)),

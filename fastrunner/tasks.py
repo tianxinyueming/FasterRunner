@@ -1,6 +1,8 @@
 # _*_ coding: utf-8 _*_
+import django
+django.setup()
+
 import json
-from collections import deque
 
 from celery import shared_task  # 可以无需任何具体的应用程序实例创建任务
 
@@ -56,7 +58,7 @@ def schedule_debug_suite(*args, **kwargs):
             report_name = case_kwargs["testCaseName"]
             if case_kwargs["currentTestDataExcel"] != '请选择' and case_kwargs["currentTestDataSheet"]:
                 test_data = (case_kwargs["currentTestDataExcel"], case_kwargs["currentTestDataSheet"])
-            if case_kwargs["hostInfo"] != "请选择":
+            if case_kwargs["hostInfo"] and case_kwargs["hostInfo"] != "请选择":
                 g_host_info = case_kwargs["hostInfo"]
                 host = models.HostIP.objects.get(name=g_host_info, project__id=project)
                 _host_info = json.loads(host.hostInfo)
@@ -68,7 +70,7 @@ def schedule_debug_suite(*args, **kwargs):
             if "base_url" in body["request"].keys():
                 config = eval(models.Config.objects.get(name=body["name"], project__id=project).body)
                 continue
-            test_case.append(parse_host(host, body))
+            test_case.append(parse_host(g_host_info, body))
 
         if config and g_host_info not in ["请选择", '']:
             config["variables"].extend(temp_config)
@@ -82,21 +84,21 @@ def schedule_debug_suite(*args, **kwargs):
                 }
             }
 
-        summary = debug_api(test_case, project, name=case_name, config=parse_host(host, config), save=False, test_data=test_data)
+        summary = debug_api(test_case, project, name=case_name, config=parse_host(g_host_info, config), save=False, test_data=test_data)
         save_summary(report_name, summary, project, type=3)
         if kwargs["strategy"] != '从不发送':
             summary["name"] = report_name
             sample_summary.append(summary)
 
     if sample_summary:
-        runresult = parser_runresult(sample_summary)
+        sensitive_keys = kwargs.get('sensitive_keys', [])
+        runresult = parser_runresult(sample_summary, sensitive_keys)
         is_send_email = control_email(runresult, kwargs)
         if is_send_email:
             peoject_name = models.Project.objects.get(id=project).name
             subject_name = peoject_name + kwargs["task_name"]
             html_conetnt = prepare_email_content(runresult, subject_name)
             send_file_path = prepare_email_file(sample_summary)
-            print(send_file_path[0])
             send_status = send_result_email(subject_name, kwargs["receiver"], kwargs["mail_cc"], send_html_content=html_conetnt, send_file_path=send_file_path)
             if send_status:
                 print('邮件发送成功')
