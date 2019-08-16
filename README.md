@@ -87,9 +87,9 @@
 
 ##### 其他注意点
 - Windows环境安装mysqlclient可能需要先安装Microsoft Visual c++ 14.0,然后在 https://www.lfd.uci.edu/~gohlke/pythonlibs/ 此链接下找自己需要的windows安装包
-- 如果提示：No module named 'djcelery' ，再执行一遍 pip install django-celery==3.3.0
+- 如果提示：No module named 'djcelery' ，再执行一遍 pip install django-celery==3.2.2
 - 如果提示： ValueError: Unable to configure handler 'default': [Errno 2] No such file or directory: 'mypath\\FasterRunner\\logs\\debug.log' , 手动创建FasterRunner\\logs\\debug.log
 - 下载rabbmitMQ所需的erlang时，在官网下载很慢，可以访问 https://www.erlang-solutions.com/resources/download.html，windows配置参考：https://blog.csdn.net/qq_31634461/article/details/79377256
 - ubuntu 安装py3.6缺少包参考：https://blog.csdn.net/kunagisatomo_i/article/details/81177558
 - xadmin后台添加小组件报错，注释掉python包里的：/site-packages/django/forms/boundfield.py中的大概93行  ```#renderer=self.form.renderer```
-- 如果测试用例运行结果数据比较大的话，更改mysql配置文件[mysqld]：max_allowed_packet=1073741824; 这是1G的大小。sudo docker cp mysql:/etc/mysql/mysql.conf.d/mysqld.cnf /home/ebao/fastrunner/mysql/my.cnf，先拷贝一份容器里的配置文件出来，再映射回去。
+- 如果测试用例运行结果数据比较大的话，更改mysql配置文件[mysqld]：max_allowed_packet=1073741824; 这是1G的大小。
