@@ -10,6 +10,7 @@ apps/fastrunner/migrations/*_remove_*.py
 apps/users/migrations/*initial.py
 apps/users/migrations/*_auto_*.py
 apps/users/migrations/*_remove_*.py
+apps/users/migrations/*_user_*.py
 media/*
 tempWorkDir/*.*
 

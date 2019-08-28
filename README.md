@@ -6,10 +6,14 @@
 
 ## 注意
 如果在20190828日期之前，已经部署过我的FasterRunner,此次更新时，需要一些手动操作：
-1. 拉取新代码后 python manage.py makemigrations
-2. python manage.py dbshell 进入数据库
+1. 拉取新代码后, 先将 apps/users/models.py 中 belong_project 这一行注释掉
+2. python manage.py makemigrations，生成 0001_initial 文件
+3. python manage.py dbshell 进入数据库 或者手动修改数据库
   - INSERT INTO django_migrations (app, name, applied) VALUES ('users', '0001_initial', CURRENT_TIMESTAMP);
   - UPDATE django_content_type SET app_label = 'users' WHERE app_label = 'auth' and model = 'user';
+4. python manage.py migrate
+5. 去除 1 中的注释，再次执行 python manage.py makemigrations ，python manage.py migrate
+
 
 ### 简介
 在上一位作者的基础上，完善并且丰富了平台的功能，支持全部的httprunner特性重要更新如下：
@@ -55,7 +59,7 @@
 14. python3 manage.py migrate  # 执行迁移数据
 15. python3 manage.py createsuperuser  # 按提示创建一个超级用户
 16. 访问生产地址
-17. 之后更新版本时,如果依赖包没有变化,只需执行步骤1/3/4/6/7/8,然后 docker-compose restart 即可;如果依赖包有变化则需要重新打镜像
+17. 之后更新版本时,如果依赖包没有变化,只需执行步骤1/3/4/6/7/8,然后 docker-compose restart 即可;如果依赖包有变化则需要重新打镜像;如果数据库有变化则需要12/13/14
 
 ```
 
