@@ -7,10 +7,12 @@ from django.http import FileResponse
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
+from rest_framework.permissions import DjangoModelPermissions
 
 from fastrunner.utils import response
 from fastrunner.utils.decorator import request_log
 from fastrunner.utils.writeExcel import write_excel_log
+from fastrunner.utils.permissions import IsBelongToProject
 from fastrunner import models
 from FasterRunner.settings import MEDIA_ROOT
 
@@ -18,6 +20,7 @@ from FasterRunner.settings import MEDIA_ROOT
 class DownloadView(APIView):
     """下载文件接口
     """
+    # permission_classes = (DjangoModelPermissions, IsBelongToProject)
     @method_decorator(request_log(level='DEBUG'))
     def post(self, request, **kwargs):
         """下载文件

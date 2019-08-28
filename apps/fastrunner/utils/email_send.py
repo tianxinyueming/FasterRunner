@@ -13,17 +13,18 @@ from jinja2 import Environment, FileSystemLoader, Template
 from django.core.mail import EmailMultiAlternatives
 
 from FasterRunner.settings import EMAIL_FROM, BASE_DIR, REPORTS_HOST
-from fastrunner.utils.writeExcel import write_excel_log
+from fastrunner.utils.writeExcel import write_excel_log, get_error_response_content
 
 
-def control_email(runresult, kwargs):
+def control_email(sample_summary, kwargs):
     if kwargs["strategy"] == '从不发送':
         return False
     elif kwargs["strategy"] == '始终发送':
         return True
     elif kwargs["strategy"] == '仅失败发送':
-        if runresult["failures"] > 0:
-            return True
+        for summary in sample_summary:
+            if not summary["success"]:
+                return True
     elif kwargs["strategy"] == '监控邮件':
         """
             新建一个monitor.json文件
@@ -64,7 +65,7 @@ def control_email(runresult, kwargs):
 
         is_send_email = False
         last_json = all_json[kwargs["task_name"]]
-        runresultErrorMsg = __filter_runresult(runresult, kwargs["self_error"])
+        runresultErrorMsg = __filter_runresult(sample_summary, kwargs["self_error"])
 
         if runresultErrorMsg == '' and last_json["error_message"] == '':
             last_json["error_count"] = 0
@@ -170,12 +171,21 @@ def parser_runresult(sample_summary, sensitive_keys):
         for deatil in summary["details"]:
             if not deatil["success"]:
                 failures += 1
-                error_api = deatil["records"][-1]
-                error_response = error_api["meta_data"]["response"]
-                if 'content' in error_response.keys() and error_response["content"] is not None:
-                    error_response_content += error_response["content"] + '\n'
+                if int(deatil["stat"]["failures"]) + int(deatil["stat"]["errors"]) > 1:
+                    for record in deatil["records"]:
+                        if record["status"] not in ["success", "skipped"]:
+                            error_response = record["meta_data"]["response"]
+                            if 'content' in error_response.keys() and error_response["content"] is not None:
+                                error_response_content += error_response["content"] + '\n'
+                            else:
+                                error_response_content += record["attachment"] + '\n'
                 else:
-                    error_response_content += error_api["attachment"] + '\n'
+                    error_api = deatil["records"][-1]
+                    error_response = error_api["meta_data"]["response"]
+                    if 'content' in error_response.keys() and error_response["content"] is not None:
+                        error_response_content += error_response["content"] + '\n'
+                    else:
+                        error_response_content += error_api["attachment"] + '\n'
 
         if test["status"] == 'error':
             fail_task += 1
@@ -225,11 +235,14 @@ def prepare_email_file(sample_summary):
     return [file_path]
 
 
-def __filter_runresult(runresult, self_error_list):
+def __filter_runresult(sample_summary, self_error_list):
     runresultErrorMsg = ''
-    if runresult["error_list"]:
-        for err in runresult["error_list"]:
-            runresultErrorMsg += __is_self_error(err["content"].strip(), self_error_list)
+    for summary in sample_summary:
+        runresult = get_error_response_content(summary["details"])[0]
+        for testcase_result in runresult:
+            for errormsg in testcase_result["error_api_content"]:
+                if errormsg:
+                    runresultErrorMsg += __is_self_error(errormsg[3].strip(), self_error_list)
     return runresultErrorMsg
 
 
@@ -271,7 +284,8 @@ def __generate_report(summary, sensitive_keys):
     start_at_timestamp = int(summary["time"]["start_at"])
     summary["time"]["start_datetime"] = datetime.fromtimestamp(start_at_timestamp).strftime('%Y-%m-%d %H:%M:%S')
 
-    report_name = ''.join(random.choices(string.ascii_letters + string.digits, k=32))
+    #  report_name = ''.join(random.choices(string.ascii_letters + string.digits, k=32))  # py3.5版本没有choices方法
+    report_name = ''.join(random.sample(string.ascii_letters + string.digits, 32))
     relative_report_path = os.path.join('media', 'reports', "{}.html".format(report_name))
     report_template_path = os.path.join(BASE_DIR, 'templates', 'orgin_report_template.html')
     report_path = os.path.join(BASE_DIR, relative_report_path)

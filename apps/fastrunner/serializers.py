@@ -175,7 +175,7 @@ class PeriodicTaskSerializer(serializers.ModelSerializer):
             mail_cc += _ + ';'
         for _ in summary_kwargs["self_error"]:
             self_error += _ + ';'
-        for _ in summary_kwargs["sensitive_keys"]:
+        for _ in summary_kwargs.get('sensitive_keys', []):
             sensitive_keys += _ + ';'
         summary_kwargs["receiver"] = receiver
         summary_kwargs["mail_cc"] = mail_cc

@@ -93,10 +93,14 @@ def schedule_debug_suite(*args, **kwargs):
     if sample_summary:
         sensitive_keys = kwargs.get('sensitive_keys', [])
         runresult = parser_runresult(sample_summary, sensitive_keys)
-        is_send_email = control_email(runresult, kwargs)
+        is_send_email = control_email(sample_summary, kwargs)
         if is_send_email:
             peoject_name = models.Project.objects.get(id=project).name
-            subject_name = peoject_name + kwargs["task_name"]
+            subject_name = peoject_name + ' - ' + kwargs["task_name"]
+            if runresult["fail_task"] > 0:
+                subject_name += " - 失败：" + ",".join([err_msg["proj"] for err_msg in runresult["error_list"]])
+            else:
+                subject_name += " - 成功！"
             html_conetnt = prepare_email_content(runresult, subject_name)
             send_file_path = prepare_email_file(sample_summary)
             send_status = send_result_email(subject_name, kwargs["receiver"], kwargs["mail_cc"], send_html_content=html_conetnt, send_file_path=send_file_path)

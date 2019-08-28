@@ -13,12 +13,13 @@ from FasterRunner import pagination
 from fastrunner.utils import response
 from fastrunner.utils.decorator import request_log
 from fastrunner.utils.parser import Format
+from fastrunner.utils.permissions import IsBelongToProject
 
 
 class ConfigView(GenericViewSet):
     serializer_class = serializers.ConfigSerializer
     queryset = models.Config.objects
-    permission_classes = (DjangoModelPermissions,)
+    permission_classes = (DjangoModelPermissions, IsBelongToProject)
 
     @method_decorator(request_log(level='DEBUG'))
     def list(self, request):
@@ -177,7 +178,7 @@ class ConfigView(GenericViewSet):
 class VariablesView(GenericViewSet):
     serializer_class = serializers.VariablesSerializer
     queryset = models.Variables.objects
-    permission_classes = (DjangoModelPermissions,)
+    permission_classes = (DjangoModelPermissions, IsBelongToProject)
 
     @method_decorator(request_log(level='DEBUG'))
     def list(self, request):
@@ -273,7 +274,7 @@ class HostIPView(viewsets.ModelViewSet):
     create: 传id时认为是在复制，不传时在新建
     """
     pagination_class = pagination.MyPageNumberPagination
-    permission_classes = (DjangoModelPermissions,)
+    permission_classes = (DjangoModelPermissions, IsBelongToProject)
 
     def get_queryset(self):
         return models.HostIP.objects.filter(project__id=self.request.query_params['project']).order_by('-update_time')

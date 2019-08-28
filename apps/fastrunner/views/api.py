@@ -9,6 +9,8 @@ from fastrunner import models, serializers
 from fastrunner.utils import response
 from fastrunner.utils.decorator import request_log
 from fastrunner.utils.parser import Format, Parse
+from fastrunner.utils.permissions import IsBelongToProject
+from fastrunner.utils.prepare import api_end
 
 
 class APITemplateView(GenericViewSet):
@@ -17,7 +19,7 @@ class APITemplateView(GenericViewSet):
     """
     serializer_class = serializers.APISerializer
     queryset = models.API.objects
-    permission_classes = (DjangoModelPermissions,)
+    permission_classes = (DjangoModelPermissions, IsBelongToProject)
 
     @method_decorator(request_log(level='DEBUG'))
     def list(self, request):
@@ -138,10 +140,10 @@ class APITemplateView(GenericViewSet):
 
         try:
             if kwargs.get('pk'):  # 单个删除
-                models.API.objects.get(id=kwargs['pk']).delete()
+                api_end(kwargs['pk'])
             else:
                 for content in request.data:
-                    models.API.objects.get(id=content['id']).delete()
+                    api_end(content['id'])
 
         except ObjectDoesNotExist:
             return Response(response.API_NOT_FOUND)

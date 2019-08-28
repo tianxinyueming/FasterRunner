@@ -3,7 +3,6 @@ from rest_framework import mixins
 from rest_framework.viewsets import GenericViewSet
 from rest_framework.permissions import DjangoModelPermissions
 from djcelery.models import TaskMeta
-from django.utils.timezone import now
 
 from FasterRunner import pagination
 from fastrunner.serializers import TaskMetaSerializer
@@ -15,5 +14,5 @@ class TaskMetaView(GenericViewSet, mixins.ListModelMixin):
     """
     pagination_class = pagination.MyPageNumberPagination
     permission_classes = (DjangoModelPermissions,)
-    queryset = TaskMeta.objects.filter(date_done__date=now().date()).order_by('-date_done')
+    queryset = TaskMeta.objects.all().order_by('-date_done')
     serializer_class = TaskMetaSerializer

@@ -8,6 +8,7 @@ from fastrunner import models, serializers
 from FasterRunner import pagination
 from fastrunner.utils import prepare
 from fastrunner.utils.decorator import request_log
+from fastrunner.utils.permissions import IsBelongToProject
 
 
 class TestCaseView(ModelViewSet):
@@ -33,7 +34,7 @@ class TestCaseView(ModelViewSet):
     """
     serializer_class = serializers.CaseSerializer
     pagination_class = pagination.MyPageNumberPagination
-    permission_classes = (DjangoModelPermissions,)
+    permission_classes = (DjangoModelPermissions, IsBelongToProject)
 
     def get_queryset(self):
         project = self.request.query_params["project"]
@@ -102,15 +103,16 @@ class TestCaseView(ModelViewSet):
 
     @method_decorator(request_log(level='INFO'))
     def destroy(self, request, *args, **kwargs):
+        project_id = request.query_params["project"]
         if kwargs.get('pk') and int(kwargs['pk']) != -1:
             instance = self.get_object()
-            prepare.case_end(int(kwargs['pk']))
+            prepare.case_end(int(kwargs['pk']), project_id)
             self.perform_destroy(instance)
         elif request.data:
             for content in request.data:
                 self.kwargs['pk'] = content['id']
                 instance = self.get_object()
-                prepare.case_end(int(kwargs['pk']))
+                prepare.case_end(int(kwargs['pk']), project_id)
                 self.perform_destroy(instance)
         return Response(status=status.HTTP_204_NO_CONTENT)
 

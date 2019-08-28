@@ -1,5 +1,5 @@
-import traceback
-
+# _*_ coding: utf-8 _*_
+import json
 from fastrunner import models
 from fastrunner.utils.parser import Format
 from djcelery import models as celery_models
@@ -50,13 +50,11 @@ def tree_end(params, project):
     node = params['node']
 
     if type == 1:
-        models.API.objects. \
-            filter(relation=node, project=project).delete()
+        models.API.objects.filter(relation=node, project=project).delete()
 
     # remove node testcase
     elif type == 2:
-        case = models.Case.objects. \
-            filter(relation=node, project=project).values('id')
+        case = models.Case.objects.filter(relation=node, project=project).values('id')
 
         for case_id in case:
             models.CaseStep.objects.filter(case__id=case_id['id']).delete()
@@ -206,9 +204,23 @@ def generate_casestep(body, case):
         models.CaseStep.objects.create(**kwargs)
 
 
-def case_end(pk):
+def case_end(pk, project_id):
     """
     pk: int case id
     """
+    # 删除定时任务里的case
+    tasks = celery_models.PeriodicTask.objects.filter(description=project_id)
+    for task in tasks:
+        task_args = json.loads(task.args)
+        for index in range(len(task_args)):
+            if task_args[index]["id"] == pk:
+                del task_args[index]
+        task.args = json.dumps(task_args)
+        task.save()
     models.CaseStep.objects.filter(case__id=pk).delete()
     models.Case.objects.filter(id=pk).delete()
+
+
+def api_end(pk):
+    models.CaseStep.objects.filter(apiId=pk).delete()
+    models.API.objects.get(id=pk).delete()

@@ -8,6 +8,7 @@ from rest_framework import status
 
 from FasterRunner import pagination
 from fastrunner import models, serializers
+from fastrunner.utils.permissions import IsBelongToProject
 
 
 class ReportView(GenericViewSet, mixins.RetrieveModelMixin, mixins.ListModelMixin, mixins.DestroyModelMixin):
@@ -16,7 +17,7 @@ class ReportView(GenericViewSet, mixins.RetrieveModelMixin, mixins.ListModelMixi
     """
     serializer_class = serializers.ReportSerializer
     pagination_class = pagination.MyPageNumberPagination
-    permission_classes = (DjangoModelPermissions,)
+    permission_classes = (DjangoModelPermissions, IsBelongToProject)
 
     def get_queryset(self):
         project = self.request.query_params['project']

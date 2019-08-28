@@ -11,6 +11,7 @@ from djcelery import models as celery_models
 from FasterRunner import pagination
 from fastrunner import serializers
 from fastrunner.utils.decorator import request_log
+from fastrunner.utils.permissions import IsBelongToProject
 
 
 class ScheduleView(ModelViewSet):
@@ -19,7 +20,7 @@ class ScheduleView(ModelViewSet):
     """
     serializer_class = serializers.PeriodicTaskSerializer
     pagination_class = pagination.MyPageNumberPagination
-    permission_classes = (DjangoModelPermissions,)
+    permission_classes = (DjangoModelPermissions, IsBelongToProject)
 
     def get_queryset(self):
         project = self.request.query_params.get("project")

@@ -8,6 +8,7 @@ from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.permissions import DjangoModelPermissions
 from djcelery import models as celery_models
+from django.contrib.auth import get_user_model
 
 from fastrunner import models, serializers
 from FasterRunner import pagination
@@ -16,17 +17,25 @@ from fastrunner.utils import prepare
 from fastrunner.utils.decorator import request_log
 from fastrunner.utils.runner import DebugCode
 from fastrunner.utils.tree import get_tree_max_id
+from fastrunner.utils.permissions import IsBelongToProject
 from FasterRunner.settings import MEDIA_ROOT
+
+UserModel = get_user_model()
 
 
 class ProjectView(ModelViewSet):
     """
     项目增删改查
     """
-    queryset = models.Project.objects.all().order_by('-update_time')
     serializer_class = serializers.ProjectSerializer
     pagination_class = pagination.MyCursorPagination
-    permission_classes = (DjangoModelPermissions,)
+    permission_classes = (DjangoModelPermissions, IsBelongToProject)
+
+    def get_queryset(self):
+        if self.request.user.is_superuser:
+            return models.Project.objects.all().order_by('-create_time')
+        project_id_list = UserModel.objects.filter(id=self.request.user.id).values_list('belong_project', flat=True)
+        return models.Project.objects.filter(id__in=[_ for _ in project_id_list]).order_by('-update_time')
 
     @method_decorator(request_log(level='INFO'))
     def single(self, request, **kwargs):
@@ -51,6 +60,73 @@ class ProjectView(ModelViewSet):
         instance = serializer.save()
         # 生成debugtalk.py文件
         models.Pycode.objects.create(project=instance, name="debugtalk.py", desc="项目的根目录文件，项目中所使用函数都从此中调用")
+        models.Pycode.objects.create(project=instance, name="get_excel_data.py", desc="获取excel表格数据", code="""
+# _*_ coding:utf-8 _*_
+import xlrd
+import os
+
+class Xlaccountinfo():
+    # 获取excel数据，从第三行开始，第二行是表头，第一行是备注
+    def __init__(self, path=''):
+        self.xl = xlrd.open_workbook(path)
+
+    def floattostr(self, val):
+        if isinstance(val, float) and float(int(val)) != val:
+            val = str(int(val))
+        if val.lower() == 'true':
+            val = True
+        elif val.lower() == 'false':
+            val = False
+        return val
+
+    def get_sheetinfo_by_name(self, name):
+        self.sheet = self.xl.sheet_by_name(name)
+        return self.get_sheet_info()
+
+    def get_sheetinfo_by_index(self, index):
+        self.sheet = self.xl.sheet_by_index(index)
+        return self.get_sheet_info()
+
+    def get_sheetinfo_by_rowName(self, name):
+        self.sheet = self.xl.sheet_by_name(name)
+        infolist = []
+        for col in range(self.sheet.ncols):
+            if col == 0:
+                listKey = [self.floattostr(val.strip()) for val in self.sheet.col_values(col)]
+            elif col == 1:
+                info = [self.floattostr(val.strip()) for val in self.sheet.col_values(col)]
+                tmp = zip(listKey, info)
+                infolist.append(dict(tmp))
+        return infolist
+
+    def get_sheet_info(self):
+        infolist = []
+        for row in range(1, self.sheet.nrows):
+            if row == 1:
+                listKey = [self.floattostr(val.strip()) for val in self.sheet.row_values(row)]
+            else:
+                info = [self.floattostr(val.strip()) for val in self.sheet.row_values(row)]
+                tmp = zip(listKey, info)
+                infolist.append(dict(tmp))
+        return infolist
+
+
+# 通过行获取excel数据
+def get_xlsx_by_cols(excelName, sheetName):
+    xlinfo = Xlaccountinfo(excelName)
+    info = xlinfo.get_sheetinfo_by_name(sheetName)
+    return info
+
+# 通过列获取excel数据
+def xlsxPlatform(excelName, sheetName):
+    xlinfo = Xlaccountinfo(excelName)
+    info = xlinfo.get_sheetinfo_by_rowName(sheetName)
+    return info
+    
+if __name__ == '__main__':
+    excelName = os.environ["excelName"]
+    sheetName = os.environ["excelsheet"]
+                                     """)
         # 自动生成API tree
         models.Relation.objects.create(project=instance)
         # 自动生成Test Tree
@@ -66,7 +142,7 @@ class DashboardView(GenericViewSet):
     """
     dashboard信息
     """
-
+    # permission_classes = (DjangoModelPermissions, IsBelongToProject)
     @method_decorator(request_log(level='INFO'))
     def get(self, request, **kwargs):
         return Response(prepare.get_project_detail(kwargs['pk']))
@@ -76,7 +152,7 @@ class TreeView(GenericViewSet):
     """
     树形结构操作
     """
-    permission_classes = (DjangoModelPermissions,)
+    permission_classes = (DjangoModelPermissions, IsBelongToProject)
 
     def get_queryset(self):
         project_id = self.kwargs.get('pk')
@@ -145,7 +221,7 @@ class FileView(ModelViewSet):
     """
     serializer_class = serializers.FileSerializer
     pagination_class = pagination.MyPageNumberPagination
-    permission_classes = (DjangoModelPermissions,)
+    permission_classes = (DjangoModelPermissions, IsBelongToProject)
 
     def get_queryset(self):
         if self.action == 'create':
@@ -204,6 +280,7 @@ class PycodeRunView(GenericViewSet, mixins.RetrieveModelMixin):
     驱动代码调试运行
     """
     serializer_class = serializers.PycodeSerializer
+    permission_classes = (DjangoModelPermissions, IsBelongToProject)
 
     def get_queryset(self):
         project = self.request.query_params["project"]
@@ -230,7 +307,7 @@ class PycodeView(ModelViewSet):
     """
     serializer_class = serializers.PycodeSerializer
     pagination_class = pagination.MyPageNumberPagination
-    permission_classes = (DjangoModelPermissions,)
+    permission_classes = (DjangoModelPermissions, IsBelongToProject)
 
     def get_queryset(self):
         project = self.request.query_params["project"]

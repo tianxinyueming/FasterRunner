@@ -2,7 +2,7 @@ import json
 import logging
 
 from django.core.exceptions import ObjectDoesNotExist
-from rest_framework.decorators import api_view, authentication_classes
+from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework import status
 from djcelery import models as celery_models
@@ -12,6 +12,7 @@ from fastrunner.utils.decorator import request_log
 from fastrunner.utils.host import parse_host
 from fastrunner.utils.parser import Format
 from fastrunner.utils import loader
+from fastrunner.utils.permissions import IsBelongToProject
 from fastrunner import models
 
 """运行方式

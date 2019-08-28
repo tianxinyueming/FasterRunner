@@ -42,6 +42,7 @@ REPORTS_HOST = cf.get(env+'-config', 'REPORTS_HOST')
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(BASE_DIR, 'extra_apps'))
+sys.path.insert(0, os.path.join(BASE_DIR, 'apps'))
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/2.1/howto/deployment/checklist/
@@ -53,6 +54,7 @@ SECRET_KEY = 'e$od9f28jce8q47u3raik$(e%$@lff6r89ux+=f!e1a$e42+#7'
 DEBUG = log_level
 
 ALLOWED_HOSTS = ['*']
+AUTH_USER_MODEL = 'users.User'
 
 # Define MEDIA_URL as the base public URL of that directory. Make sure that this directory is writable by the Web server's user account.
 # Define MEDIA_ROOT as the full path to a directory where you'd like Django to store uploaded files. (For performance, these files are not stored in the database.)
@@ -75,7 +77,8 @@ INSTALLED_APPS = [
     'xadmin',
     'crispy_forms',
     'DjangoUeditor',
-    'reversion'
+    'reversion',
+    'users'
 ]
 
 MIDDLEWARE = [
