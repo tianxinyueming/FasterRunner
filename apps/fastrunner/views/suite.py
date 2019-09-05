@@ -1,5 +1,5 @@
 from django.utils.decorators import method_decorator
-from rest_framework.viewsets import ModelViewSet
+from rest_framework.viewsets import ModelViewSet, GenericViewSet, mixins
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.permissions import DjangoModelPermissions
@@ -128,3 +128,48 @@ class TestCaseView(ModelViewSet):
         }
         return Response(resp)
 
+
+class TestCaseSynchronize(GenericViewSet, mixins.UpdateModelMixin):
+    """
+    同步测试用例里的api的基本request以及header信息
+    """
+    serializer_class = serializers.CaseSerializer
+    permission_classes = (DjangoModelPermissions, IsBelongToProject)
+
+    def get_queryset(self):
+        project = self.request.query_params["project"]
+        queryset = models.Case.objects.filter(project__id=project).order_by('-update_time')
+        return queryset
+
+    def update(self, request, *args, **kwargs):
+        partial = kwargs.pop('partial', False)
+        instance = self.get_object()
+
+        case_id = instance.id
+        case_step = models.CaseStep.objects.filter(case_id=case_id).order_by('step')
+        for case in case_step:
+            if case.method != 'config':
+                api_body = eval(models.API.objects.get(id=case.apiId).body)
+                csae_body = eval(case.body)
+                csae_body["request"] = api_body["request"]
+                csae_body["desc"]["header"] = api_body["desc"]["header"]
+                csae_body["desc"]["data"] = api_body["desc"]["data"]
+                csae_body["desc"]["files"] = api_body["desc"]["files"]
+                csae_body["desc"]["params"] = api_body["desc"]["params"]
+
+                case.url = api_body["request"]["url"]
+                case.method = api_body["request"]["method"]
+                case.body = csae_body
+                case.save()
+
+        case_request_data = {}
+        serializer = self.get_serializer(instance, data=case_request_data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+
+        if getattr(instance, '_prefetched_objects_cache', None):
+            # If 'prefetch_related' has been applied to a queryset, we need to
+            # forcibly invalidate the prefetch cache on the instance.
+            instance._prefetched_objects_cache = {}
+
+        return Response(serializer.data)

@@ -130,6 +130,7 @@ class HostIP(BaseTable):
     hostInfo = models.TextField(null=False, help_text="环境信息详情")
     project = models.ForeignKey(Project, on_delete=models.CASCADE, help_text="所属项目")
     base_url = models.URLField(null=True, blank=True, help_text="环境根地址")
+    # desc = models.CharField(null=True, blank=True, help_text="描述信息", max_length=100, default="")
 
     def __str__(self):
         return self.name
@@ -219,9 +220,31 @@ class ModelWithFileField(BaseTable):
     project = models.ForeignKey(Project, on_delete=models.CASCADE)
     name = models.CharField(max_length=50)
     file = models.FileField(upload_to='testdatas', unique=True, null=True, blank=True)
+    relation = models.IntegerField("节点id", null=False, default=1)
+    excel_tree = models.TextField("excel的级联数据", null=True, blank=True)
 
     def __str__(self):
         return self.name
+
+
+class LockFiles(BaseTable):
+    """
+    锁定的文件信息表
+    """
+    class Meta:
+        verbose_name = "锁定文件信息表"
+        verbose_name_plural = verbose_name
+        unique_together = [['project', 'lock_type', 'file_id']]
+        default_permissions = ('add',)
+    tag = (
+        (1, "测试数据"),
+    )
+    project = models.ForeignKey(Project, on_delete=models.CASCADE)
+    lock_type = models.CharField(choices=tag, max_length=2, verbose_name="锁定哪个信息表")
+    file_id = models.IntegerField(verbose_name="锁定文件的id")
+
+    def __str__(self):
+        return 'table:%s - id:%s' % (self.lock_type, self.file_id)
 
 
 class Pycode(BaseTable):

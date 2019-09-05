@@ -1,10 +1,13 @@
 import os
+import xlrd
+from xlrd.biffh import XLRDError
 
 from django.core.exceptions import ObjectDoesNotExist
 from django.utils.decorators import method_decorator
 from rest_framework.viewsets import GenericViewSet, ModelViewSet
 from rest_framework import mixins
 from rest_framework import status
+from rest_framework import exceptions
 from rest_framework.response import Response
 from rest_framework.permissions import DjangoModelPermissions
 from djcelery import models as celery_models
@@ -17,7 +20,7 @@ from fastrunner.utils import prepare
 from fastrunner.utils.decorator import request_log
 from fastrunner.utils.runner import DebugCode
 from fastrunner.utils.tree import get_tree_max_id
-from fastrunner.utils.permissions import IsBelongToProject
+from fastrunner.utils.permissions import IsBelongToProject, _check_is_locked
 from FasterRunner.settings import MEDIA_ROOT
 
 UserModel = get_user_model()
@@ -131,6 +134,8 @@ if __name__ == '__main__':
         models.Relation.objects.create(project=instance)
         # 自动生成Test Tree
         models.Relation.objects.create(project=instance, type=2)
+        # 自动生成 TestData Tree
+        models.Relation.objects.create(project=instance, type=3)
 
     def perform_destroy(self, instance):
         project_id = instance.id
@@ -168,14 +173,15 @@ class TreeView(GenericViewSet):
 
         try:
             tree_type = request.query_params['type']
-            tree = models.Relation.objects.get(project__id=kwargs['pk'], type=tree_type)
         except KeyError:
             return Response(response.KEY_MISS)
+        try:
+            tree = models.Relation.objects.get(project_id=kwargs['pk'], type=tree_type)
+            body = eval(tree.tree)
+        except ObjectDoesNotExist as e:
+            tree = models.Relation.objects.create(project_id=kwargs['pk'], type=tree_type, tree=[{'id': 1, 'label': 'testdata', 'children': []}])
+            body = []
 
-        except ObjectDoesNotExist:
-            return Response(response.SYSTEM_ERROR)
-
-        body = eval(tree.tree)  # list
         tree = {
             "tree": body,
             "id": tree.id,
@@ -213,7 +219,7 @@ class TreeView(GenericViewSet):
         return Response(response.TREE_UPDATE_SUCCESS)
 
 
-class FileView(ModelViewSet):
+class FileView(GenericViewSet, mixins.CreateModelMixin, mixins.ListModelMixin, mixins.DestroyModelMixin):
     """
     list:当前项目文件列表
     create:上传与更新文件
@@ -230,7 +236,15 @@ class FileView(ModelViewSet):
             return models.ModelWithFileField.objects.filter(project__id=project, name=name).order_by('-update_time')
         else:
             project = self.request.query_params['project']
-            return models.ModelWithFileField.objects.filter(project__id=project).order_by('-update_time')
+            queryset = models.ModelWithFileField.objects.filter(project__id=project).order_by('-update_time')
+            if self.action == 'list':
+                node = self.request.query_params.get('node', '')
+                search = self.request.query_params.get('search', '')
+                if search != '':
+                    queryset = queryset.filter(name__contains=search)
+                if node != '':
+                    queryset = queryset.filter(relation=node)
+            return queryset
 
     def create(self, request, *args, **kwargs):
         if not self.get_queryset():
@@ -241,15 +255,20 @@ class FileView(ModelViewSet):
             return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
         else:
             self.kwargs['pk'] = self.get_queryset()[0].id
+            _check_is_locked(request.data['project'], 1, self.kwargs['pk'])
+
             instance = self.get_object()
             filepath = os.path.join(MEDIA_ROOT, str(instance.file))
             if os.path.exists(filepath):
                 os.remove(filepath)
+            req_relation = request.data.get("relation", '')
+            if not req_relation:
+                request.data["relation"] = instance.relation
 
             partial = kwargs.pop('partial', False)
             serializer = self.get_serializer(instance, data=request.data, partial=partial)
             serializer.is_valid(raise_exception=True)
-            self.perform_update(serializer)
+            self.perform_create(serializer)
             if getattr(instance, '_prefetched_objects_cache', None):
                 # If 'prefetch_related' has been applied to a queryset, we need to
                 # forcibly invalidate the prefetch cache on the instance.
@@ -259,6 +278,7 @@ class FileView(ModelViewSet):
 
     def destroy(self, request, *args, **kwargs):
         if kwargs.get('pk') and int(kwargs['pk']) != -1:
+            _check_is_locked(request.query_params['project'], 1, kwargs['pk'])
             instance = self.get_object()
             filepath = os.path.join(MEDIA_ROOT, str(instance.file))
             if os.path.exists(filepath):
@@ -267,12 +287,30 @@ class FileView(ModelViewSet):
         elif request.data:
             for content in request.data:
                 self.kwargs['pk'] = content['id']
+                try:
+                    _check_is_locked(content['project'], 1, content['id'])
+                except exceptions.NotAcceptable as e:
+                    continue
                 instance = self.get_object()
                 filepath = os.path.join(MEDIA_ROOT, str(instance.file))
                 if os.path.exists(filepath):
                     os.remove(filepath)
                 self.perform_destroy(instance)
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+    def perform_create(self, serializer):
+        serializer.save()
+        try:
+            excel_file = models.ModelWithFileField.objects.get(id=serializer.data["id"])
+            file_path = os.path.join(MEDIA_ROOT, str(excel_file.file))
+            excel_info = xlrd.open_workbook(file_path)
+            excel_tree = {"value": excel_file.name, "label": excel_file.name, "children": []}
+            for sheet in excel_info.sheets():
+                excel_tree["children"].append({"value": sheet.name, "label": sheet.name})
+            excel_file.excel_tree = excel_tree
+            excel_file.save()
+        except XLRDError as e:
+            pass
 
 
 class PycodeRunView(GenericViewSet, mixins.RetrieveModelMixin):

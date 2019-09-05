@@ -36,9 +36,6 @@ def run_api(request):
     api = Format(request.data)
     api.parse()
 
-    test_data = None
-    if request.data["testDataExcel"] != '请选择' and request.data["testDataSheet"]:
-        test_data = (request.data["testDataExcel"], request.data["testDataSheet"])
     config = None
     if name != '请选择':
         try:
@@ -74,7 +71,7 @@ def run_api(request):
     #     except ObjectDoesNotExist:
     #         logger.error("指定域名不存在:{name}".format(name=host))
     try:
-        summary = loader.debug_api(api.testcase, api.project, config=parse_host(host, config), test_data=test_data)
+        summary = loader.debug_api(api.testcase, api.project, config=parse_host(host, config))
     except Exception as e:
         return Response({'traceback': str(e)}, status=400)
     return Response(summary)
@@ -90,10 +87,6 @@ def run_api_pk(request, **kwargs):
     name = request.query_params["config"]
     config = None if name == '请选择' else eval(models.Config.objects.get(name=name, project=api.project).body)
     test_case = eval(api.body)
-
-    test_data = None
-    if request.query_params["testDataExcel"] != '请选择' and request.query_params["testDataSheet"]:
-        test_data = (request.query_params["testDataExcel"], request.query_params["testDataSheet"])
 
     temp_config = []
     temp_baseurl = ''
@@ -121,7 +114,7 @@ def run_api_pk(request, **kwargs):
     #     except ObjectDoesNotExist:
     #         logger.error("指定域名不存在:{name}".format(name=host))
     try:
-        summary = loader.debug_api(test_case, api.project.id, config=parse_host(host, config), test_data=test_data)
+        summary = loader.debug_api(test_case, api.project.id, config=parse_host(host, config))
     except Exception as e:
         return Response({'traceback': str(e)}, status=400)
 
@@ -212,8 +205,8 @@ def run_testsuite_pk(request, **kwargs):
     report_name = request.data["reportName"]
 
     test_data = None
-    if request.data["testDataExcel"] != '请选择' and request.data["testDataSheet"]:
-        test_data = (request.data["testDataExcel"], request.data["testDataSheet"])
+    if request.data["excelTreeData"]:
+        test_data = tuple(request.data["excelTreeData"])
 
     test_case = []
     config = None

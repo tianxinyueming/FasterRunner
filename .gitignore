@@ -4,13 +4,8 @@
 myconfig.conf
 logs/*.*
 .idea
-apps/fastrunner/migrations/*initial.py
-apps/fastrunner/migrations/*_auto_*.py
-apps/fastrunner/migrations/*_remove_*.py
-apps/users/migrations/*initial.py
-apps/users/migrations/*_auto_*.py
-apps/users/migrations/*_remove_*.py
-apps/users/migrations/*_user_*.py
+apps/fastrunner/migrations/[0]*.py
+apps/users/migrations/[0]*.py
 media/*
 tempWorkDir/*.*
 

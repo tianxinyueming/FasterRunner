@@ -1,8 +1,14 @@
 import json
+import os
+
 from rest_framework import serializers
+from djcelery import models as celery_models
+import xlrd
+from xlrd.biffh import XLRDError
+
 from fastrunner import models
 from fastrunner.utils.parser import Parse, parser_variables
-from djcelery import models as celery_models
+from FasterRunner.settings import MEDIA_ROOT
 
 
 class ProjectSerializer(serializers.ModelSerializer):
@@ -183,7 +189,7 @@ class PeriodicTaskSerializer(serializers.ModelSerializer):
         summary_kwargs["sensitive_keys"] = sensitive_keys
         return summary_kwargs
 
-    def get_summary_args(self,obj):
+    def get_summary_args(self, obj):
         summary_args = json.loads(obj.args)
         return summary_args
 
@@ -203,6 +209,20 @@ class FileSerializer(serializers.ModelSerializer):
     """
     file = serializers.FileField(required=True, write_only=True, allow_empty_file=False, use_url='testdatas', label="文件",
                                  help_text="文件", error_messages={"blank": "请上传文件", "required": "请上传文件"})
+    excel_tree = serializers.SerializerMethodField(help_text="excel文件结构列表")
+
+    def get_excel_tree(self, obj):
+        if obj.excel_tree:
+            return eval(obj.excel_tree)
+        try:
+            file_path = os.path.join(MEDIA_ROOT, str(obj.file))
+            excel_info = xlrd.open_workbook(file_path)
+            excel_tree = {"value": obj.name, "label": obj.name, "children": []}
+            for sheet in excel_info.sheets():
+                excel_tree["children"].append({"value": sheet.name, "label": sheet.name})
+            return excel_tree
+        except XLRDError as e:
+            pass
 
     class Meta:
         model = models.ModelWithFileField
@@ -227,3 +247,12 @@ class TaskMetaSerializer(serializers.ModelSerializer):
     class Meta:
         model = celery_models.TaskMeta
         fields = ['task_id', 'id', 'status', 'date_done', 'traceback']
+
+
+class LockFilesSerializer(serializers.ModelSerializer):
+    """
+    锁定信息序列化
+    """
+    class Meta:
+        model = models.LockFiles
+        fields = "__all__"

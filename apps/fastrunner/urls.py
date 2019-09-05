@@ -18,7 +18,7 @@ from django.urls import path
 from django.conf.urls import url, include
 from rest_framework.routers import DefaultRouter
 
-from fastrunner.views import project, api, config, schedule, run, suite, report, download, taskmeta
+from fastrunner.views import project, api, config, schedule, run, suite, report, download, taskmeta, lock_files
 
 router = DefaultRouter()
 # 项目信息
@@ -27,10 +27,13 @@ router.register(r'project', project.ProjectView, base_name='project')
 router.register(r'host_ip', config.HostIPView, base_name='host_ip')
 # 文件管理
 router.register(r'file', project.FileView, base_name='file')
+# 文件锁定
+router.register(r'lock_file', lock_files.LockFilesView, base_name='lock_file')
 # dashboard
 # router.register(r'dashboard', project.DashboardView, base_name='dashboard')
 # 测试用例
 router.register(r'testcase', suite.TestCaseView, base_name='testcase')
+router.register(r'TestCaseSync', suite.TestCaseSynchronize, base_name='TestCaseSync')
 # 驱动代码
 router.register(r'pycode', project.PycodeView, base_name='pycode')
 router.register(r'runpycode', project.PycodeRunView, base_name="runpycode")

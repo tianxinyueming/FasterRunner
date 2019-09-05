@@ -9,7 +9,7 @@ from celery import shared_task  # 可以无需任何具体的应用程序实例�
 from fastrunner import models
 from fastrunner.utils.loader import save_summary, debug_suite, debug_api
 from fastrunner.utils.host import parse_host
-from fastrunner.utils.email_send import send_result_email, prepare_email_content, control_email, parser_runresult, prepare_email_file
+from fastrunner.utils.email_send import send_result_email, prepare_email_content, control_email, parser_runresult, prepare_email_file, get_summary_report
 
 
 @shared_task
@@ -43,9 +43,13 @@ def schedule_debug_suite(*args, **kwargs):
     project = int(kwargs["project"])
 
     sample_summary = []
+    if not args:
+        raise ValueError('任务列表为空，请检查')
     for cases in args:
         case_kwargs = cases.get('kwargs', '')
         test_list = models.CaseStep.objects.filter(case__id=cases["id"]).order_by("step").values("body")
+        if not test_list:
+            raise ValueError('用例缺失，请假查')
         report_name = cases["name"]
         case_name = cases["name"]
         test_case = []
@@ -56,8 +60,8 @@ def schedule_debug_suite(*args, **kwargs):
         g_host_info = ''
         if case_kwargs:
             report_name = case_kwargs["testCaseName"]
-            if case_kwargs["currentTestDataExcel"] != '请选择' and case_kwargs["currentTestDataSheet"]:
-                test_data = (case_kwargs["currentTestDataExcel"], case_kwargs["currentTestDataSheet"])
+            if case_kwargs["excelTreeData"]:
+                test_data = tuple(case_kwargs["excelTreeData"])
             if case_kwargs["hostInfo"] and case_kwargs["hostInfo"] != "请选择":
                 g_host_info = case_kwargs["hostInfo"]
                 host = models.HostIP.objects.get(name=g_host_info, project__id=project)
@@ -85,16 +89,17 @@ def schedule_debug_suite(*args, **kwargs):
             }
 
         summary = debug_api(test_case, project, name=case_name, config=parse_host(g_host_info, config), save=False, test_data=test_data)
-        save_summary(report_name, summary, project, type=3)
-        if kwargs["strategy"] != '从不发送':
-            summary["name"] = report_name
-            sample_summary.append(summary)
+        summary["name"] = report_name
+        sample_summary.append(summary)
 
     if sample_summary:
-        sensitive_keys = kwargs.get('sensitive_keys', [])
-        runresult = parser_runresult(sample_summary, sensitive_keys)
+        summary_report = get_summary_report(sample_summary)
+        save_summary(kwargs["task_name"], summary_report, project, type=3)
         is_send_email = control_email(sample_summary, kwargs)
         if is_send_email:
+            sensitive_keys = kwargs.get('sensitive_keys', [])
+            runresult = parser_runresult(sample_summary, sensitive_keys)
+
             peoject_name = models.Project.objects.get(id=project).name
             subject_name = peoject_name + ' - ' + kwargs["task_name"]
             if runresult["fail_task"] > 0:
@@ -102,7 +107,7 @@ def schedule_debug_suite(*args, **kwargs):
             else:
                 subject_name += " - 成功！"
             html_conetnt = prepare_email_content(runresult, subject_name)
-            send_file_path = prepare_email_file(sample_summary)
+            send_file_path = prepare_email_file(summary_report)
             send_status = send_result_email(subject_name, kwargs["receiver"], kwargs["mail_cc"], send_html_content=html_conetnt, send_file_path=send_file_path)
             if send_status:
                 print('邮件发送成功')

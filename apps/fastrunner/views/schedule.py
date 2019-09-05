@@ -4,6 +4,7 @@ import re
 from django.utils.decorators import method_decorator
 from rest_framework.viewsets import ModelViewSet
 from rest_framework import status
+from rest_framework import exceptions
 from rest_framework.response import Response
 from rest_framework.permissions import DjangoModelPermissions
 from djcelery import models as celery_models
@@ -56,24 +57,6 @@ class ScheduleView(ModelViewSet):
             }
         else:
             request_data = format_request(request.data)
-            if not request_data["kwargs"]["receiver"]["success"]:
-                return Response(request_data["_email"]["receiver"]["error"], status=status.HTTP_400_BAD_REQUEST)
-            if not request_data["kwargs"]["mail_cc"]["success"]:
-                return Response(request_data["_email"]["mail_cc"]["error"], status=status.HTTP_400_BAD_REQUEST)
-            if request_data["kwargs"]["strategy"] in ['始终发送', '仅失败发送'] and request_data["kwargs"]["receiver"] == []:
-                return Response({"receiver": "请填写接收邮箱"}, status=status.HTTP_400_BAD_REQUEST)
-            if not request_data["crontab"]["success"]:
-                return Response(request_data["crontab"]["error"], status=status.HTTP_400_BAD_REQUEST)
-            crontab = celery_models.CrontabSchedule.objects.filter(**request_data["crontab"]["crontab"]).first()
-            if crontab is None:
-                crontab = serializers.CrontabScheduleSerializer(data=request_data["crontab"]["crontab"])
-                crontab.is_valid(raise_exception=True)
-                crontab.save()
-                crontab = celery_models.CrontabSchedule.objects.filter(**request_data["crontab"]["crontab"]).first()
-            request_data["crontab"] = crontab.id
-            request_data["kwargs"]["receiver"] = request_data["kwargs"]["receiver"]["email"]
-            request_data["kwargs"]["mail_cc"] = request_data["kwargs"]["mail_cc"]["email"]
-            request_data["kwargs"] = json.dumps(request_data["kwargs"], ensure_ascii=False)
 
         serializer = self.get_serializer(data=request_data)
         serializer.is_valid(raise_exception=True)
@@ -87,24 +70,6 @@ class ScheduleView(ModelViewSet):
         instance = self.get_object()
 
         request_data = format_request(request.data)
-        if not request_data["kwargs"]["receiver"]["success"]:
-            return Response(request_data["kwargs"]["receiver"]["error"], status=status.HTTP_400_BAD_REQUEST)
-        if not request_data["kwargs"]["mail_cc"]["success"]:
-            return Response(request_data["kwargs"]["mail_cc"]["error"], status=status.HTTP_400_BAD_REQUEST)
-        if request_data["kwargs"]["strategy"] in ['始终发送', '仅失败发送'] and request_data["kwargs"]["receiver"] == []:
-            return Response({"receiver": "请填写接收邮箱"}, status=status.HTTP_400_BAD_REQUEST)
-        if not request_data["crontab"]["success"]:
-            return Response(request_data["crontab"]["error"], status=status.HTTP_400_BAD_REQUEST)
-        crontab = celery_models.CrontabSchedule.objects.filter(**request_data["crontab"]["crontab"]).first()
-        if crontab is None:
-            crontab = serializers.CrontabScheduleSerializer(data=request_data["crontab"]["crontab"])
-            crontab.is_valid(raise_exception=True)
-            crontab.save()
-            crontab = celery_models.CrontabSchedule.objects.filter(**request_data["crontab"]["crontab"]).first()
-        request_data["crontab"] = crontab.id
-        request_data["kwargs"]["receiver"] = request_data["kwargs"]["receiver"]["email"]
-        request_data["kwargs"]["mail_cc"] = request_data["kwargs"]["mail_cc"]["email"]
-        request_data["kwargs"] = json.dumps(request_data["kwargs"], ensure_ascii=False)
 
         serializer = self.get_serializer(instance, data=request_data, partial=partial)
         serializer.is_valid(raise_exception=True)
@@ -134,7 +99,7 @@ def format_crontab(crontab_time):
     """
     crontab_s = crontab_time.strip().split(' ')
     if len(crontab_s) > 5:
-        return {"error": {"crontab": "请检查crontab表达式长度"}, "success": False}
+        raise exceptions.ParseError('请检查crontab表达式长度')
     try:
         crontab = {
             'day_of_week': crontab_s[4],
@@ -143,9 +108,9 @@ def format_crontab(crontab_time):
             'hour': crontab_s[1],
             'minute': crontab_s[0]
         }
-        return {"crontab": crontab, "success": True}
+        return crontab
     except Exception as e:
-        return {"error": {"crontab": "请检查crontab表达式"}, "success": False}
+        raise exceptions.ParseError('请检查crontab表达式')
 
 
 def format_email(email_str):
@@ -157,13 +122,10 @@ def format_email(email_str):
     if email_str:
         pattern = r'^\w+([-+.]\w+)*@\w+([-.]\w+)*\.\w+([-.]\w+)*$'
         email_list = [_.strip() for _ in email_str.split(';') if _]
-        verfy_email = {}
         for temp_email in email_list:
             if temp_email and re.match(pattern, temp_email) is None:
-                verfy_email[temp_email] = "邮箱格式错误"
-        if verfy_email:
-            return {"error": verfy_email, "email": email_list, "success": False}
-    return {"email": email_list, "success": True}
+                raise exceptions.ParseError(str(temp_email)+' 邮箱格式错误')
+    return email_list
 
 
 def format_request(request_data):
@@ -205,5 +167,17 @@ def format_request(request_data):
         "description": _project,
         "enabled": _switch
     }
+
+    if request_data["kwargs"]["strategy"] in ['始终发送', '仅失败发送'] and request_data["kwargs"]["receiver"] == []:
+        raise exceptions.ParseError('请填写接收邮箱')
+
+    crontab = celery_models.CrontabSchedule.objects.filter(**request_data["crontab"]).first()
+    if crontab is None:
+        crontab = serializers.CrontabScheduleSerializer(data=request_data["crontab"])
+        crontab.is_valid(raise_exception=True)
+        crontab.save()
+        crontab = celery_models.CrontabSchedule.objects.filter(**request_data["crontab"]).first()
+    request_data["crontab"] = crontab.id
+    request_data["kwargs"] = json.dumps(request_data["kwargs"], ensure_ascii=False)
 
     return request_data

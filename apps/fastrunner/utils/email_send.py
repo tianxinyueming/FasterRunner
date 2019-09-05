@@ -161,18 +161,17 @@ def parser_runresult(sample_summary, sensitive_keys):
     for summary in sample_summary:
         # 删除指定的字段敏感信息,然后保存为html文件
         report_link = __generate_report(summary, sensitive_keys)
-
         test = {}
         test["status"] = 'success' if summary["success"] else 'error'
         test['name'] = summary["name"]
         test['link'] = '<a href=%s>%s</a>' % (report_link, test['name'])
         error_response_content = ''
         testsRun += len(summary["details"])
-        for deatil in summary["details"]:
-            if not deatil["success"]:
+        for detail in summary["details"]:
+            if not detail["success"]:
                 failures += 1
-                if int(deatil["stat"]["failures"]) + int(deatil["stat"]["errors"]) > 1:
-                    for record in deatil["records"]:
+                if int(detail["stat"]["failures"]) + int(detail["stat"]["errors"]) > 1:
+                    for record in detail["records"]:
                         if record["status"] not in ["success", "skipped"]:
                             error_response = record["meta_data"]["response"]
                             if 'content' in error_response.keys() and error_response["content"] is not None:
@@ -180,7 +179,7 @@ def parser_runresult(sample_summary, sensitive_keys):
                             else:
                                 error_response_content += record["attachment"] + '\n'
                 else:
-                    error_api = deatil["records"][-1]
+                    error_api = detail["records"][-1]
                     error_response = error_api["meta_data"]["response"]
                     if 'content' in error_response.keys() and error_response["content"] is not None:
                         error_response_content += error_response["content"] + '\n'
@@ -213,11 +212,17 @@ def parser_runresult(sample_summary, sensitive_keys):
     return runresult
 
 
-def prepare_email_file(sample_summary):
+def prepare_email_file(summary_report):
     """
-    :param sample_summary: list
+    :param summary_report: summary report
     :return: file path list
     """
+
+    file_path = write_excel_log(summary_report)
+    return [file_path]
+
+
+def get_summary_report(sample_summary):
     # 汇总报告
     summary_report = sample_summary[0]
     for index, summary in enumerate(sample_summary):
@@ -231,8 +236,7 @@ def prepare_email_file(sample_summary):
             summary_report["stat"]["unexpectedSuccesses"] += summary["stat"]["unexpectedSuccesses"]
             summary_report["time"]["duration"] += summary["time"]["duration"]
             summary_report["details"].extend(summary["details"])
-    file_path = write_excel_log(summary_report)
-    return [file_path]
+    return summary_report
 
 
 def __filter_runresult(sample_summary, self_error_list):

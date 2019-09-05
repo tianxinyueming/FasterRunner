@@ -17,19 +17,19 @@
 
 ### 简介
 在上一位作者的基础上，完善并且丰富了平台的功能，支持全部的httprunner特性重要更新如下：
-- 增加新功能：文件上传与下载，上传的文件可直接在py文件里引用
+- 增加测试数据页面：文件上传与下载，上传的文件可直接在py文件里引用，并且文件可锁定，锁定后无法更新/删除,保证测试数据在使用时的安全稳定。测试用例页面也可快速上传文件。
 - 增加了自己的配置文件，在setting.py中引用，便于管理开发与本地调试，模板见文件：config.conf,自己创建myconfig.conf
-- 驱动代码页面支持多py文件在线编辑
+- 驱动代码页面支持多python文件在线编辑
 - 批量api模板上传（ 支持httprunner -V 1.X/2.X），根据自己的项目情况更改db_tools/import_api_data.py中 “MY_API_FILEPATH PROJECT_ID” 后，在根目录下执行命令 python db_tools\import_api_data.py, 然后刷新页面即可。
 - 支持skipIf机制。编辑testcase时可编辑api中skipIf一栏。
-- 支持testcase运行时指定failfast参数。 可在配置信息中控制failfast开关。
+- 支持testcase运行时指定failfast参数。 在配置信息中控制failfast开关。
 - 重构了域名管理功能，用于配置环境相关信息，相当于配置管理的一个拆分，便于单个调试api以及快速切换环境，这样组合配置信息与环境信息可减少重复配置信息，减少维护量。而对于base_url字段，域名管理的权限高于配置管理，若域名管理里base_url不为空，则会覆盖配置管理的base_url。例如可以只将登录所需信息放在域名管理里。
 - 重构了用户认证，使用了drf-jwt应用，移除了注册功能，直接从后台分配账号（出于安全考虑）
 - api/testcase运行时可以填写测试数据两个字段，此字段在后台运行时会生成系统环境变量“excelName”/“excelsheet”。此字段在驱动代码里可以os.environ["excelsheet"]方式获取，并进一步做自己的处理。这里我主要想法是，测试用例读取数据时，不再从固定的表里读取数据，而是只要有对应的表头，就可以返回测试数据，这样一条测试用例可以被很方便的调用。
 - 增加了简易的excel报告，提取了简要的报错信息，便于大批量运行测试用例时查看
 - 同步运行时抓取httprunner错误返回到前端。
 - 配置管理里新加了output参数，output将写入报告里，output参数来自于整个用例运行时variables/extract等。
-- 更新了api与testcase的关系。沿用httprunner作者的思想，测试用例中的request/headers/method/url内容直接调用相应api中的内容；并且更新api的request/header/method/url时，会自动改变测试用例中的request/headers/method/url
+- 更新了api与testcase的关系。沿用httprunner作者的思想，测试用例中的request/headers/method/url内容直接调用相应api中的内容；更新api中的request/header/method/url时，不会自动更新测试用例中的api信息，提供了同步操作，手动更新（这里主要是考虑到在项目周期中，可能有生产环境的任务需要执行，而在测试环境还没发布到生产的时候，更新了api基本信息会导致生产环境任务不兼容而失败。如果项目中有这种情况的话，推荐复制case，并通过复制的case进行测试环境测试，保证生产环境case的稳定）。
 - 支持异步运行测试用例。
 - 增加了xadmin后台管理系统，通过后台管理系统可以方便的完成分配账号以及api层权限控制以及数据增删改查操作
 - 书写了在服务器上的docker-compose部署方式，参考docker-compose.yml文件。networks参数是内网，需要先在后台创建。
