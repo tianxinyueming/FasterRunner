@@ -224,7 +224,8 @@ def prepare_email_file(summary_report):
 
 def get_summary_report(sample_summary):
     # 汇总报告
-    summary_report = sample_summary[0]
+    __summary = deepcopy(sample_summary)
+    summary_report = __summary[0]
     for index, summary in enumerate(sample_summary):
         if index > 0:
             summary_report["success"] = summary["success"] if not summary["success"] else summary_report["success"]

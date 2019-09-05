@@ -60,7 +60,7 @@ def schedule_debug_suite(*args, **kwargs):
         g_host_info = ''
         if case_kwargs:
             report_name = case_kwargs["testCaseName"]
-            if case_kwargs["excelTreeData"]:
+            if case_kwargs.get("excelTreeData", []):
                 test_data = tuple(case_kwargs["excelTreeData"])
             if case_kwargs["hostInfo"] and case_kwargs["hostInfo"] != "请选择":
                 g_host_info = case_kwargs["hostInfo"]
