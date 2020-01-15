@@ -87,6 +87,12 @@
 ## 本地开发环境部署
 ##### 命令均在FastRunner根目录下执行
 ``` bash
+ Model class apps.fastrunner.models.Project doesn't declare an explicit app_label and isn't in an application in INSTALLED_APPS.
+Python3下Django使用Djangoueditor富文本编辑器
+https://blog.csdn.net/qq_39865665/article/details/83449677
+将下载好的python3对应好的包 解压后 使用python3 命令 安装到site packge下面
+FasterRunner\\logs\\debug.log手动创建此目录
+【使用修改好的项目工程】
 1. pip install -r requirements.txt 安装依赖库
 2. 建立自己所需的myconfig.conf文件，参数见FasterRunner/setting.py文件
 3. 若在本地用mysql，则需要安装mysql server，并创建NAME指定的database
