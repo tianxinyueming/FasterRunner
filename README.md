@@ -99,7 +99,7 @@ FasterRunner\\logs\\debug.log手动创建此目录
 4. python3 manage.py makemigrations 生成数据库迁移文件
 5. python3 manage.py migrate 应用生成的库文件
 6. python3 manage.py createsuperuser  # 按提示创建一个超级用户
-7. python manage.py runserver 开发环境启动服务
+7. python3 manage.py runserver 开发环境启动服务
 8. 安装rabbmitMQ中间件，并配置setting中的BROKER_URL（默认一般不用修改）
 9. celery -A FasterRunner worker -l info 启动异步worker /文件启动方式（修改celery的文件名 因与celery包名冲突）  python3 FasterRunner/celerys.py worker -l info
 10. python3 manage.py celery beat -l info  启动beat监听定时任务
